@@ -20,9 +20,14 @@ import {
   ownerRemoveFromQueue,
   skipMyTurn,
 } from '../../controllers/queueController';
-import { subscribeToRoomMembers, subscribeToRoomQueue } from '../../controllers/realtimeController';
+import { closeRoom, loadRoom } from '../../controllers/roomController';
+import {
+  subscribeToRoom,
+  subscribeToRoomMembers,
+  subscribeToRoomQueue,
+} from '../../controllers/realtimeController';
 import type { QueueItem } from '../../types/queueTypes';
-import type { CurrentRoom, RoomMember } from '../../types/roomTypes';
+import type { CurrentRoom, RoomMember, RoomStatus } from '../../types/roomTypes';
 
 type RoomScreenProps = {
   room: CurrentRoom;
@@ -30,24 +35,53 @@ type RoomScreenProps = {
 };
 
 export function RoomScreen({ room, onBackHome }: RoomScreenProps) {
+  const [roomStatus, setRoomStatus] = useState<RoomStatus>(room.roomStatus);
+
   const [members, setMembers] = useState<RoomMember[]>([]);
   const [queueItems, setQueueItems] = useState<QueueItem[]>([]);
 
+  const [isLoadingRoom, setIsLoadingRoom] = useState(true);
   const [isLoadingMembers, setIsLoadingMembers] = useState(true);
   const [isLoadingQueue, setIsLoadingQueue] = useState(true);
-  const [isChangingQueue, setIsChangingQueue] = useState(false);
 
+  const [isChangingQueue, setIsChangingQueue] = useState(false);
+  const [isClosingRoom, setIsClosingRoom] = useState(false);
+
+  const [roomError, setRoomError] = useState<string | null>(null);
   const [membersError, setMembersError] = useState<string | null>(null);
   const [queueError, setQueueError] = useState<string | null>(null);
+
+  const isOwner = room.memberRole === 'owner';
+  const isRoomClosed = roomStatus === 'closed';
+
+  const fetchRoom = useCallback(async () => {
+    try {
+      setRoomError(null);
+
+      const loadedRoom = await loadRoom(room.roomId);
+
+      setRoomStatus(loadedRoom.status);
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Erro desconhecido ao carregar sala.';
+
+      setRoomError(errorMessage);
+    } finally {
+      setIsLoadingRoom(false);
+    }
+  }, [room.roomId]);
 
   const fetchMembers = useCallback(async () => {
     try {
       setMembersError(null);
+
       const loadedMembers = await loadRoomMembers(room.roomId);
+
       setMembers(loadedMembers);
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : 'Erro desconhecido ao carregar membros.';
+
       setMembersError(errorMessage);
     } finally {
       setIsLoadingMembers(false);
@@ -57,11 +91,14 @@ export function RoomScreen({ room, onBackHome }: RoomScreenProps) {
   const fetchQueue = useCallback(async () => {
     try {
       setQueueError(null);
+
       const loadedQueue = await loadRoomQueue(room.roomId);
+
       setQueueItems(loadedQueue);
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : 'Erro desconhecido ao carregar fila.';
+
       setQueueError(errorMessage);
     } finally {
       setIsLoadingQueue(false);
@@ -69,8 +106,14 @@ export function RoomScreen({ room, onBackHome }: RoomScreenProps) {
   }, [room.roomId]);
 
   useEffect(() => {
+    fetchRoom();
     fetchMembers();
     fetchQueue();
+
+    const unsubscribeRoom = subscribeToRoom({
+      roomId: room.roomId,
+      onChange: fetchRoom,
+    });
 
     const unsubscribeMembers = subscribeToRoomMembers({
       roomId: room.roomId,
@@ -83,10 +126,11 @@ export function RoomScreen({ room, onBackHome }: RoomScreenProps) {
     });
 
     return () => {
+      unsubscribeRoom();
       unsubscribeMembers();
       unsubscribeQueue();
     };
-  }, [fetchMembers, fetchQueue, room.roomId]);
+  }, [fetchRoom, fetchMembers, fetchQueue, room.roomId]);
 
   const membersById = useMemo(() => {
     return members.reduce<Record<string, RoomMember>>((accumulator, member) => {
@@ -99,18 +143,25 @@ export function RoomScreen({ room, onBackHome }: RoomScreenProps) {
   const waitingQueue = queueItems.filter((item) => item.status === 'waiting');
   const myQueueItem = queueItems.find((item) => item.member_id === room.memberId) ?? null;
 
-  const isOwner = room.memberRole === 'owner';
   const isMeOnStage = myQueueItem?.status === 'on_stage';
   const isMeWaiting = myQueueItem?.status === 'waiting';
-  const isInQueue = Boolean(myQueueItem);
-
   const canMoveMyTurnDown =
-    isMeWaiting && waitingQueue.length > 1 && waitingQueue.at(-1)?.member_id !== room.memberId;
+    isMeWaiting &&
+    waitingQueue.length > 1 &&
+    waitingQueue[waitingQueue.length - 1]?.member_id !== room.memberId;
 
   const currentOnStageMember = currentOnStage ? membersById[currentOnStage.member_id] : null;
   const roleLabel = isOwner ? 'Dono' : 'Convidado';
 
   async function runQueueAction(action: () => Promise<void>) {
+    if (isRoomClosed) {
+      Alert.alert(
+        'Sala encerrada',
+        'Essa sala já foi encerrada. O karaokê dessa turma acabou por hoje.'
+      );
+      return;
+    }
+
     try {
       setIsChangingQueue(true);
       setQueueError(null);
@@ -167,13 +218,58 @@ export function RoomScreen({ room, onBackHome }: RoomScreenProps) {
     );
   }
 
+  function confirmCloseRoom() {
+    Alert.alert(
+      'Fechar sala?',
+      'Isso encerra o karaokê para todo mundo e bloqueia novas ações nesta sala.',
+      [
+        {
+          text: 'Cancelar',
+          style: 'cancel',
+        },
+        {
+          text: 'Fechar sala',
+          style: 'destructive',
+          onPress: handleCloseRoom,
+        },
+      ]
+    );
+  }
+
+  async function handleCloseRoom() {
+    try {
+      setIsClosingRoom(true);
+      setRoomError(null);
+
+      await closeRoom(room.roomId, room.memberId);
+      await fetchRoom();
+      await fetchQueue();
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Erro desconhecido ao fechar sala.';
+
+      Alert.alert('Não consegui fechar a sala', errorMessage);
+    } finally {
+      setIsClosingRoom(false);
+    }
+  }
+
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.badge}>Sala ativa</Text>
+        <Text style={styles.badge}>{isRoomClosed ? 'Sala encerrada' : 'Sala ativa'}</Text>
         <Text style={styles.title}>{room.roomName}</Text>
         <Text style={styles.subtitle}>Código da sala: {room.roomCode}</Text>
       </View>
+
+      {roomError && <Text style={styles.errorText}>{roomError}</Text>}
+
+      {isRoomClosed && (
+        <View style={styles.closedBanner}>
+          <Text style={styles.closedTitle}>Essa sala já foi encerrada.</Text>
+          <Text style={styles.closedText}>O karaokê dessa turma acabou por hoje.</Text>
+        </View>
+      )}
 
       <View style={styles.card}>
         <Text style={styles.cardLabel}>Você</Text>
@@ -186,7 +282,12 @@ export function RoomScreen({ room, onBackHome }: RoomScreenProps) {
       <View style={styles.stageCard}>
         <Text style={styles.sectionTitle}>Cantando agora</Text>
 
-        {currentOnStage ? (
+        {isLoadingRoom || isLoadingQueue ? (
+          <View style={styles.loadingRow}>
+            <ActivityIndicator />
+            <Text style={styles.loadingText}>Atualizando o palco...</Text>
+          </View>
+        ) : currentOnStage && !isRoomClosed ? (
           <>
             <Text style={styles.stageName}>
               {currentOnStageMember?.name ?? 'Alguém misterioso'}
@@ -203,8 +304,11 @@ export function RoomScreen({ room, onBackHome }: RoomScreenProps) {
             {isMeOnStage && (
               <View style={styles.buttonGroup}>
                 <TouchableOpacity
-                  disabled={isChangingQueue}
-                  style={[styles.primaryButton, isChangingQueue && styles.disabledButton]}
+                  disabled={isChangingQueue || isRoomClosed}
+                  style={[
+                    styles.primaryButton,
+                    (isChangingQueue || isRoomClosed) && styles.disabledButton,
+                  ]}
                   onPress={() => runQueueAction(() => finishMyTurn(room.roomId, room.memberId))}
                 >
                   {isChangingQueue ? (
@@ -215,8 +319,11 @@ export function RoomScreen({ room, onBackHome }: RoomScreenProps) {
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  disabled={isChangingQueue}
-                  style={[styles.warningButton, isChangingQueue && styles.disabledButton]}
+                  disabled={isChangingQueue || isRoomClosed}
+                  style={[
+                    styles.warningButton,
+                    (isChangingQueue || isRoomClosed) && styles.disabledButton,
+                  ]}
                   onPress={() => runQueueAction(() => skipMyTurn(room.roomId, room.memberId))}
                 >
                   {isChangingQueue ? (
@@ -227,8 +334,11 @@ export function RoomScreen({ room, onBackHome }: RoomScreenProps) {
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  disabled={isChangingQueue}
-                  style={[styles.dangerButton, isChangingQueue && styles.disabledButton]}
+                  disabled={isChangingQueue || isRoomClosed}
+                  style={[
+                    styles.dangerButton,
+                    (isChangingQueue || isRoomClosed) && styles.disabledButton,
+                  ]}
                   onPress={confirmStopSinging}
                 >
                   {isChangingQueue ? (
@@ -242,8 +352,11 @@ export function RoomScreen({ room, onBackHome }: RoomScreenProps) {
 
             {isOwner && !isMeOnStage && (
               <TouchableOpacity
-                disabled={isChangingQueue}
-                style={[styles.dangerButton, isChangingQueue && styles.disabledButton]}
+                disabled={isChangingQueue || isRoomClosed}
+                style={[
+                  styles.dangerButton,
+                  (isChangingQueue || isRoomClosed) && styles.disabledButton,
+                ]}
                 onPress={() => confirmOwnerRemoveQueueItem(currentOnStage)}
               >
                 {isChangingQueue ? (
@@ -256,7 +369,9 @@ export function RoomScreen({ room, onBackHome }: RoomScreenProps) {
           </>
         ) : (
           <Text style={styles.emptyText}>
-            Ninguém no palco agora. Quando alguém entrar na fila, o app chama sozinho.
+            {isRoomClosed
+              ? 'A sala foi encerrada. O palco fechou.'
+              : 'Ninguém no palco agora. Quando alguém entrar na fila, o app chama sozinho.'}
           </Text>
         )}
       </View>
@@ -264,7 +379,11 @@ export function RoomScreen({ room, onBackHome }: RoomScreenProps) {
       <View style={styles.card}>
         <Text style={styles.sectionTitle}>Minha participação</Text>
 
-        {isMeOnStage ? (
+        {isRoomClosed ? (
+          <Text style={styles.participationText}>
+            A sala foi encerrada. Não dá mais para entrar, sair ou mexer na fila.
+          </Text>
+        ) : isMeOnStage ? (
           <>
             <Text style={styles.participationText}>
               Você está cantando agora. Depois da sua vez, pode voltar para o fim da fila ou parar.
@@ -381,12 +500,15 @@ export function RoomScreen({ room, onBackHome }: RoomScreenProps) {
 
         {!isLoadingQueue && !queueError && waitingQueue.length === 0 && (
           <Text style={styles.emptyText}>
-            Ninguém esperando. Quem está no palco pode continuar girando ou parar de cantar.
+            {isRoomClosed
+              ? 'A fila foi encerrada junto com a sala.'
+              : 'Ninguém esperando. Quem está no palco pode continuar girando ou parar de cantar.'}
           </Text>
         )}
 
         {!isLoadingQueue &&
           !queueError &&
+          !isRoomClosed &&
           waitingQueue.map((item, index) => {
             const member = membersById[item.member_id];
             const isThisMe = item.member_id === room.memberId;
@@ -406,8 +528,11 @@ export function RoomScreen({ room, onBackHome }: RoomScreenProps) {
 
                 {isOwner && (
                   <TouchableOpacity
-                    disabled={isChangingQueue}
-                    style={[styles.smallDangerButton, isChangingQueue && styles.disabledButton]}
+                    disabled={isChangingQueue || isRoomClosed}
+                    style={[
+                      styles.smallDangerButton,
+                      (isChangingQueue || isRoomClosed) && styles.disabledButton,
+                    ]}
                     onPress={() => confirmOwnerRemoveQueueItem(item)}
                   >
                     <Text style={styles.smallDangerButtonText}>Remover</Text>
@@ -453,6 +578,27 @@ export function RoomScreen({ room, onBackHome }: RoomScreenProps) {
           ))}
       </View>
 
+      {isOwner && !isRoomClosed && (
+        <View style={styles.adminCard}>
+          <Text style={styles.sectionTitle}>Administração</Text>
+          <Text style={styles.adminText}>
+            Fechar a sala encerra o karaokê para todo mundo e bloqueia novas ações.
+          </Text>
+
+          <TouchableOpacity
+            disabled={isClosingRoom}
+            style={[styles.dangerButton, isClosingRoom && styles.disabledButton]}
+            onPress={confirmCloseRoom}
+          >
+            {isClosingRoom ? (
+              <ActivityIndicator />
+            ) : (
+              <Text style={styles.dangerButtonText}>Fechar sala</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+      )}
+
       <TouchableOpacity style={styles.secondaryButton} onPress={onBackHome}>
         <Text style={styles.secondaryButtonText}>Voltar para início</Text>
       </TouchableOpacity>
@@ -489,6 +635,24 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 24,
   },
+  closedBanner: {
+    backgroundColor: '#3A1F25',
+    borderRadius: 22,
+    padding: 20,
+    gap: 6,
+    borderWidth: 1,
+    borderColor: '#7F2D3A',
+  },
+  closedTitle: {
+    color: colors.danger,
+    fontSize: 20,
+    fontWeight: '900',
+  },
+  closedText: {
+    color: colors.textMuted,
+    fontSize: 15,
+    lineHeight: 22,
+  },
   card: {
     backgroundColor: colors.surface,
     borderRadius: 22,
@@ -504,6 +668,19 @@ const styles = StyleSheet.create({
     gap: 12,
     borderWidth: 1,
     borderColor: '#285343',
+  },
+  adminCard: {
+    backgroundColor: '#1F1618',
+    borderRadius: 22,
+    padding: 20,
+    gap: 12,
+    borderWidth: 1,
+    borderColor: '#5D2732',
+  },
+  adminText: {
+    color: colors.textMuted,
+    fontSize: 15,
+    lineHeight: 22,
   },
   cardLabel: {
     color: colors.textSoft,

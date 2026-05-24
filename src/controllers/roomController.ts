@@ -3,8 +3,8 @@ import {
   createOwnerMember,
   findActiveMemberByRoomAndUser,
 } from '../models/memberModel';
-import { createRoomRecord, findRoomByCode } from '../models/roomModel';
-import type { CurrentRoom } from '../types/roomTypes';
+import { closeRoomRpc, createRoomRecord, findRoomByCode, findRoomById } from '../models/roomModel';
+import type { CurrentRoom, Room } from '../types/roomTypes';
 import { normalizeRoomCode } from '../utils/normalizeRoomCode';
 
 type CreateRoomFlowParams = {
@@ -113,4 +113,23 @@ export async function joinRoomFlow({
     memberName: member.name,
     memberRole: member.role,
   };
+}
+
+export async function loadRoom(roomId: string): Promise<Room> {
+  if (!roomId) {
+    throw new Error('Sala inválida.');
+  }
+
+  return findRoomById(roomId);
+}
+
+export async function closeRoom(roomId: string, actorMemberId: string): Promise<void> {
+  if (!roomId || !actorMemberId) {
+    throw new Error('Não consegui identificar a sala ou o dono.');
+  }
+
+  await closeRoomRpc({
+    roomId,
+    actorMemberId,
+  });
 }

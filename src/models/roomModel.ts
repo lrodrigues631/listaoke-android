@@ -7,6 +7,11 @@ type CreateRoomParams = {
   ownerUserId: string;
 };
 
+type CloseRoomParams = {
+  roomId: string;
+  actorMemberId: string;
+};
+
 export async function generateRoomCode(): Promise<string> {
   const { data, error } = await supabase.rpc('generate_room_code');
 
@@ -67,4 +72,33 @@ export async function findRoomByCode(code: string): Promise<Room | null> {
   }
 
   return data as Room;
+}
+
+export async function findRoomById(roomId: string): Promise<Room> {
+  const { data, error } = await supabase
+    .from('rooms')
+    .select('id, code, name, owner_user_id, status, created_at, closed_at, closed_by_user_id')
+    .eq('id', roomId)
+    .single();
+
+  if (error) {
+    throw new Error(`Não consegui carregar a sala: ${error.message}`);
+  }
+
+  if (!data) {
+    throw new Error('Sala não encontrada.');
+  }
+
+  return data as Room;
+}
+
+export async function closeRoomRpc({ roomId, actorMemberId }: CloseRoomParams): Promise<void> {
+  const { error } = await supabase.rpc('close_room', {
+    p_room_id: roomId,
+    p_actor_member_id: actorMemberId,
+  });
+
+  if (error) {
+    throw new Error(`Não consegui fechar a sala: ${error.message}`);
+  }
 }

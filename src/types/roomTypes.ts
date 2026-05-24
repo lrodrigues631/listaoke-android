@@ -2,7 +2,7 @@ export type RoomStatus = 'open' | 'closed';
 
 export type MemberRole = 'owner' | 'guest';
 
-export type MemberStatus = 'active' | 'left';
+export type MemberStatus = 'active' | 'left' | 'removed';
 
 export type Room = {
   id: string;
