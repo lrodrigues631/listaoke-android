@@ -2,13 +2,16 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, SafeAreaView, StyleSheet, Text, View } from 'react-native';
 
 import { supabase } from './src/lib/supabase';
+import { HomeScreen } from './src/screens/HomeScreen';
 
 type AuthStatus = 'loading' | 'success' | 'error';
+type AppScreen = 'home' | 'createRoom' | 'joinRoom';
 
 export default function App() {
-  const [status, setStatus] = useState<AuthStatus>('loading');
-  const [message, setMessage] = useState('Conectando ao Supabase...');
+  const [authStatus, setAuthStatus] = useState<AuthStatus>('loading');
+  const [authMessage, setAuthMessage] = useState('Conectando ao Supabase...');
   const [userId, setUserId] = useState<string | null>(null);
+  const [screen, setScreen] = useState<AppScreen>('home');
 
   useEffect(() => {
     let isMounted = true;
@@ -25,8 +28,8 @@ export default function App() {
           if (!isMounted) return;
 
           setUserId(sessionData.session.user.id);
-          setMessage('Sessão anônima recuperada. O karaokê ainda vive.');
-          setStatus('success');
+          setAuthMessage('Sessão anônima recuperada. O karaokê ainda vive.');
+          setAuthStatus('success');
           return;
         }
 
@@ -39,15 +42,15 @@ export default function App() {
         if (!isMounted) return;
 
         setUserId(data.user?.id ?? null);
-        setMessage('Usuário anônimo criado. Bora montar essa fila.');
-        setStatus('success');
+        setAuthMessage('Usuário anônimo criado. Bora montar essa fila.');
+        setAuthStatus('success');
       } catch (error) {
         if (!isMounted) return;
 
         const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
 
-        setMessage(errorMessage);
-        setStatus('error');
+        setAuthMessage(errorMessage);
+        setAuthStatus('error');
       }
     }
 
@@ -58,66 +61,119 @@ export default function App() {
     };
   }, []);
 
-  return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.card}>
-        <Text style={styles.title}>Listaokê Mobile</Text>
+  if (authStatus === 'loading') {
+    return (
+      <SafeAreaView style={styles.centerContainer}>
+        <ActivityIndicator size="large" />
+        <Text style={styles.loadingText}>{authMessage}</Text>
+      </SafeAreaView>
+    );
+  }
 
-        {status === 'loading' && <ActivityIndicator size="large" />}
-
-        <Text style={styles.message}>{message}</Text>
-
-        {userId && (
-          <Text style={styles.userId}>
-            ID anônimo:
-            {'\n'}
-            {userId}
-          </Text>
-        )}
-
-        {status === 'error' && (
+  if (authStatus === 'error') {
+    return (
+      <SafeAreaView style={styles.centerContainer}>
+        <View style={styles.errorCard}>
+          <Text style={styles.errorTitle}>Deu ruim na conexão.</Text>
+          <Text style={styles.errorText}>{authMessage}</Text>
           <Text style={styles.errorHint}>
-            Se deu ruim aqui, provavelmente é .env, chave do Supabase ou Anonymous Sign-Ins.
+            Confere o .env.local, a chave pública do Supabase e se Anonymous Sign-Ins está ativo.
           </Text>
-        )}
-      </View>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (screen === 'createRoom') {
+    return (
+      <SafeAreaView style={styles.centerContainer}>
+        <Text style={styles.placeholderTitle}>Criar sala</Text>
+        <Text style={styles.placeholderText}>Próxima etapa. Aqui vamos criar a sala no Supabase.</Text>
+        <Text style={styles.linkText} onPress={() => setScreen('home')}>
+          Voltar
+        </Text>
+      </SafeAreaView>
+    );
+  }
+
+  if (screen === 'joinRoom') {
+    return (
+      <SafeAreaView style={styles.centerContainer}>
+        <Text style={styles.placeholderTitle}>Entrar com código</Text>
+        <Text style={styles.placeholderText}>Próxima etapa. Aqui o convidado vai entrar na sala.</Text>
+        <Text style={styles.linkText} onPress={() => setScreen('home')}>
+          Voltar
+        </Text>
+      </SafeAreaView>
+    );
+  }
+
+  return (
+    <SafeAreaView style={styles.appContainer}>
+      <HomeScreen
+        userId={userId}
+        onCreateRoom={() => setScreen('createRoom')}
+        onJoinRoom={() => setScreen('joinRoom')}
+      />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  appContainer: {
+    flex: 1,
+    backgroundColor: '#101014',
+  },
+  centerContainer: {
     flex: 1,
     backgroundColor: '#101014',
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24,
   },
-  card: {
-    width: '100%',
-    borderRadius: 24,
-    backgroundColor: '#1B1B22',
-    padding: 24,
-    gap: 16,
-  },
-  title: {
+  loadingText: {
     color: '#FFFFFF',
-    fontSize: 28,
-    fontWeight: '800',
+    marginTop: 16,
+    fontSize: 16,
   },
-  message: {
-    color: '#E7E7EA',
-    fontSize: 18,
-    lineHeight: 26,
+  errorCard: {
+    width: '100%',
+    backgroundColor: '#1B1B22',
+    borderRadius: 24,
+    padding: 24,
+    gap: 12,
   },
-  userId: {
-    color: '#A7F3D0',
-    fontSize: 13,
-    lineHeight: 20,
+  errorTitle: {
+    color: '#FCA5A5',
+    fontSize: 24,
+    fontWeight: '900',
+  },
+  errorText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    lineHeight: 24,
   },
   errorHint: {
-    color: '#FCA5A5',
+    color: '#C9C9D1',
     fontSize: 14,
-    lineHeight: 20,
+    lineHeight: 22,
+  },
+  placeholderTitle: {
+    color: '#FFFFFF',
+    fontSize: 30,
+    fontWeight: '900',
+    marginBottom: 12,
+  },
+  placeholderText: {
+    color: '#C9C9D1',
+    fontSize: 16,
+    lineHeight: 24,
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  linkText: {
+    color: '#A7F3D0',
+    fontSize: 16,
+    fontWeight: '800',
   },
 });
