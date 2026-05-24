@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, SafeAreaView, StyleSheet, Text, View } from 'react-native';
 
-import { supabase } from './src/lib/supabase';
+import { supabase } from './src/config/supabase';
 import { CreateRoomScreen } from './src/screens/CreateRoomScreen';
 import { HomeScreen } from './src/screens/HomeScreen';
 
