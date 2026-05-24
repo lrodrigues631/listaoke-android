@@ -25,6 +25,7 @@ import {
   skipMyTurn,
 } from '../../controllers/queueController';
 import { closeRoom, loadRoom } from '../../controllers/roomController';
+import { copyRoomCode, copyRoomInvite } from '../../controllers/shareController';
 import {
   subscribeToRoom,
   subscribeToRoomMembers,
@@ -51,6 +52,7 @@ export function RoomScreen({ room, onBackHome }: RoomScreenProps) {
   const [isChangingQueue, setIsChangingQueue] = useState(false);
   const [isClosingRoom, setIsClosingRoom] = useState(false);
   const [isChangingMember, setIsChangingMember] = useState(false);
+  const [isCopyingInvite, setIsCopyingInvite] = useState(false);
 
   const [roomError, setRoomError] = useState<string | null>(null);
   const [membersError, setMembersError] = useState<string | null>(null);
@@ -225,6 +227,34 @@ export function RoomScreen({ room, onBackHome }: RoomScreenProps) {
     }
   }
 
+  async function handleCopyCode() {
+    try {
+      setIsCopyingInvite(true);
+      await copyRoomCode(room.roomCode);
+      Alert.alert('Código copiado', 'Agora manda no grupo antes que alguém invente de cantar sem fila.');
+    } catch {
+      Alert.alert('Não consegui copiar', 'Copia o código manualmente por enquanto. Chato, mas funciona.');
+    } finally {
+      setIsCopyingInvite(false);
+    }
+  }
+
+  async function handleCopyInvite() {
+    try {
+      setIsCopyingInvite(true);
+      await copyRoomInvite({
+        roomName: room.roomName,
+        roomCode: room.roomCode,
+      });
+
+      Alert.alert('Convite copiado', 'Agora manda no grupo.');
+    } catch {
+      Alert.alert('Não consegui copiar', 'Copia o código manualmente por enquanto. Chato, mas funciona.');
+    } finally {
+      setIsCopyingInvite(false);
+    }
+  }
+
   function confirmOwnerRemoveQueueItem(item: QueueItem) {
     const targetMember = membersById[item.member_id];
     const targetName = targetMember?.name ?? 'Participante';
@@ -346,6 +376,40 @@ export function RoomScreen({ room, onBackHome }: RoomScreenProps) {
         <Text style={styles.badge}>{isRoomClosed ? 'Sala encerrada' : 'Sala ativa'}</Text>
         <Text style={styles.title}>{room.roomName}</Text>
         <Text style={styles.subtitle}>Código da sala: {room.roomCode}</Text>
+      </View>
+
+      <View style={styles.inviteCard}>
+        <Text style={styles.cardLabel}>Convite</Text>
+        <Text style={styles.inviteCode}>{room.roomCode}</Text>
+        <Text style={styles.inviteText}>
+          Compartilhe esse código para a turma entrar na sala.
+        </Text>
+
+        <View style={styles.buttonGroup}>
+          <TouchableOpacity
+            disabled={isCopyingInvite}
+            style={[styles.primaryButton, isCopyingInvite && styles.disabledButton]}
+            onPress={handleCopyInvite}
+          >
+            {isCopyingInvite ? (
+              <ActivityIndicator />
+            ) : (
+              <Text style={styles.primaryButtonText}>Copiar convite</Text>
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            disabled={isCopyingInvite}
+            style={[styles.secondaryActionButton, isCopyingInvite && styles.disabledButton]}
+            onPress={handleCopyCode}
+          >
+            {isCopyingInvite ? (
+              <ActivityIndicator />
+            ) : (
+              <Text style={styles.secondaryActionButtonText}>Copiar só o código</Text>
+            )}
+          </TouchableOpacity>
+        </View>
       </View>
 
       {roomError && <Text style={styles.errorText}>{roomError}</Text>}
@@ -778,6 +842,26 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     fontSize: 16,
     lineHeight: 24,
+  },
+  inviteCard: {
+    backgroundColor: '#13231D',
+    borderRadius: 22,
+    padding: 20,
+    gap: 12,
+    borderWidth: 1,
+    borderColor: '#285343',
+  },
+  inviteCode: {
+    color: colors.text,
+    fontSize: 42,
+    lineHeight: 48,
+    letterSpacing: 6,
+    fontWeight: '900',
+  },
+  inviteText: {
+    color: colors.textMuted,
+    fontSize: 15,
+    lineHeight: 22,
   },
   closedBanner: {
     backgroundColor: '#3A1F25',
