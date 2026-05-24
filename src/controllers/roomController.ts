@@ -1,3 +1,4 @@
+import { logMemberJoinedEvent, logRoomCreatedEvent } from '../models/eventModel';
 import {
   createGuestMember,
   createOwnerMember,
@@ -49,6 +50,8 @@ export async function createRoomFlow({
     userId,
     name: cleanOwnerName,
   });
+
+  await logRoomCreatedEvent(room.id, member.id);
 
   return {
     roomId: room.id,
@@ -103,6 +106,10 @@ export async function joinRoomFlow({
       userId,
       name: cleanGuestName,
     }));
+
+  if (!existingMember) {
+    await logMemberJoinedEvent(room.id, member.id);
+  }
 
   return {
     roomId: room.id,

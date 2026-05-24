@@ -11,6 +11,11 @@ import {
 
 import { colors } from '../../constants/colors';
 import {
+  formatRoomEventMessage,
+  loadRoomEvents,
+  loadRoomSummary,
+} from '../../controllers/eventController';
+import {
   loadRoomMembers,
   removeRoomMember,
   transferRoomOwnership,
@@ -28,9 +33,11 @@ import { closeRoom, loadRoom } from '../../controllers/roomController';
 import { copyRoomCode, copyRoomInvite } from '../../controllers/shareController';
 import {
   subscribeToRoom,
+  subscribeToRoomEvents,
   subscribeToRoomMembers,
   subscribeToRoomQueue,
 } from '../../controllers/realtimeController';
+import type { RoomEvent, RoomSummary } from '../../types/eventTypes';
 import type { QueueItem } from '../../types/queueTypes';
 import type { CurrentRoom, RoomMember, RoomStatus } from '../../types/roomTypes';
 
@@ -39,15 +46,41 @@ type RoomScreenProps = {
   onBackHome: () => void;
 };
 
+const emptySummary: RoomSummary = {
+  total_performances: 0,
+  total_skips: 0,
+  total_queue_exits: 0,
+  total_removals: 0,
+  total_participants: 0,
+  ranking: [],
+};
+
+function formatEventTime(dateValue: string): string {
+  const date = new Date(dateValue);
+
+  if (Number.isNaN(date.getTime())) {
+    return '';
+  }
+
+  return date.toLocaleTimeString('pt-BR', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
 export function RoomScreen({ room, onBackHome }: RoomScreenProps) {
   const [roomStatus, setRoomStatus] = useState<RoomStatus>(room.roomStatus);
 
   const [members, setMembers] = useState<RoomMember[]>([]);
   const [queueItems, setQueueItems] = useState<QueueItem[]>([]);
+  const [events, setEvents] = useState<RoomEvent[]>([]);
+  const [summary, setSummary] = useState<RoomSummary>(emptySummary);
 
   const [isLoadingRoom, setIsLoadingRoom] = useState(true);
   const [isLoadingMembers, setIsLoadingMembers] = useState(true);
   const [isLoadingQueue, setIsLoadingQueue] = useState(true);
+  const [isLoadingEvents, setIsLoadingEvents] = useState(true);
+  const [isLoadingSummary, setIsLoadingSummary] = useState(false);
 
   const [isChangingQueue, setIsChangingQueue] = useState(false);
   const [isClosingRoom, setIsClosingRoom] = useState(false);
@@ -57,6 +90,8 @@ export function RoomScreen({ room, onBackHome }: RoomScreenProps) {
   const [roomError, setRoomError] = useState<string | null>(null);
   const [membersError, setMembersError] = useState<string | null>(null);
   const [queueError, setQueueError] = useState<string | null>(null);
+  const [eventsError, setEventsError] = useState<string | null>(null);
+  const [summaryError, setSummaryError] = useState<string | null>(null);
 
   const fetchRoom = useCallback(async () => {
     try {
@@ -109,14 +144,53 @@ export function RoomScreen({ room, onBackHome }: RoomScreenProps) {
     }
   }, [room.roomId]);
 
+  const fetchEvents = useCallback(async () => {
+    try {
+      setEventsError(null);
+
+      const loadedEvents = await loadRoomEvents(room.roomId);
+
+      setEvents(loadedEvents);
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Erro desconhecido ao carregar histórico.';
+
+      setEventsError(errorMessage);
+    } finally {
+      setIsLoadingEvents(false);
+    }
+  }, [room.roomId]);
+
+  const fetchSummary = useCallback(async () => {
+    try {
+      setIsLoadingSummary(true);
+      setSummaryError(null);
+
+      const loadedSummary = await loadRoomSummary(room.roomId);
+
+      setSummary(loadedSummary);
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Erro desconhecido ao carregar resumo.';
+
+      setSummaryError(errorMessage);
+    } finally {
+      setIsLoadingSummary(false);
+    }
+  }, [room.roomId]);
+
   useEffect(() => {
     fetchRoom();
     fetchMembers();
     fetchQueue();
+    fetchEvents();
 
     const unsubscribeRoom = subscribeToRoom({
       roomId: room.roomId,
-      onChange: fetchRoom,
+      onChange: () => {
+        fetchRoom();
+        fetchSummary();
+      },
     });
 
     const unsubscribeMembers = subscribeToRoomMembers({
@@ -124,20 +198,39 @@ export function RoomScreen({ room, onBackHome }: RoomScreenProps) {
       onChange: () => {
         fetchMembers();
         fetchQueue();
+        fetchEvents();
       },
     });
 
     const unsubscribeQueue = subscribeToRoomQueue({
       roomId: room.roomId,
-      onChange: fetchQueue,
+      onChange: () => {
+        fetchQueue();
+        fetchEvents();
+      },
+    });
+
+    const unsubscribeEvents = subscribeToRoomEvents({
+      roomId: room.roomId,
+      onChange: () => {
+        fetchEvents();
+        fetchSummary();
+      },
     });
 
     return () => {
       unsubscribeRoom();
       unsubscribeMembers();
       unsubscribeQueue();
+      unsubscribeEvents();
     };
-  }, [fetchRoom, fetchMembers, fetchQueue, room.roomId]);
+  }, [fetchRoom, fetchMembers, fetchQueue, fetchEvents, fetchSummary, room.roomId]);
+
+  useEffect(() => {
+    if (roomStatus === 'closed') {
+      fetchSummary();
+    }
+  }, [roomStatus, fetchSummary]);
 
   const membersById = useMemo(() => {
     return members.reduce<Record<string, RoomMember>>((accumulator, member) => {
@@ -171,6 +264,8 @@ export function RoomScreen({ room, onBackHome }: RoomScreenProps) {
   const transferableMembers = members.filter((member) => member.id !== room.memberId);
   const removableMembers = members.filter((member) => member.id !== room.memberId);
 
+  const topSinger = summary.ranking[0] ?? null;
+
   async function runQueueAction(action: () => Promise<void>) {
     if (isRoomClosed) {
       Alert.alert(
@@ -191,6 +286,8 @@ export function RoomScreen({ room, onBackHome }: RoomScreenProps) {
 
       await action();
       await fetchQueue();
+      await fetchEvents();
+      await fetchSummary();
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : 'Erro desconhecido ao mexer na fila.';
@@ -217,6 +314,8 @@ export function RoomScreen({ room, onBackHome }: RoomScreenProps) {
       await action();
       await fetchMembers();
       await fetchQueue();
+      await fetchEvents();
+      await fetchSummary();
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : 'Erro desconhecido ao mexer nos membros.';
@@ -298,7 +397,7 @@ export function RoomScreen({ room, onBackHome }: RoomScreenProps) {
   function confirmCloseRoom() {
     Alert.alert(
       'Fechar sala?',
-      'Isso encerra o karaokê para todo mundo e bloqueia novas ações nesta sala.',
+      'Isso encerra o karaokê para todo mundo e mostra o resumo final da noite.',
       [
         {
           text: 'Cancelar',
@@ -321,6 +420,8 @@ export function RoomScreen({ room, onBackHome }: RoomScreenProps) {
       await closeRoom(room.roomId, room.memberId);
       await fetchRoom();
       await fetchQueue();
+      await fetchEvents();
+      await fetchSummary();
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : 'Erro desconhecido ao fechar sala.';
@@ -343,7 +444,9 @@ export function RoomScreen({ room, onBackHome }: RoomScreenProps) {
         {
           text: 'Transferir',
           onPress: () =>
-            runMemberAction(() => transferRoomOwnership(room.roomId, targetMember.id)),
+            runMemberAction(() =>
+              transferRoomOwnership(room.roomId, room.memberId, targetMember.id)
+            ),
         },
       ]
     );
@@ -418,6 +521,81 @@ export function RoomScreen({ room, onBackHome }: RoomScreenProps) {
         <View style={styles.closedBanner}>
           <Text style={styles.closedTitle}>Essa sala já foi encerrada.</Text>
           <Text style={styles.closedText}>O karaokê dessa turma acabou por hoje.</Text>
+        </View>
+      )}
+
+      {isRoomClosed && (
+        <View style={styles.summaryCard}>
+          <Text style={styles.sectionTitle}>Resumo da noite</Text>
+
+          {isLoadingSummary ? (
+            <View style={styles.loadingRow}>
+              <ActivityIndicator />
+              <Text style={styles.loadingText}>Montando o placar final...</Text>
+            </View>
+          ) : summaryError ? (
+            <Text style={styles.errorText}>{summaryError}</Text>
+          ) : (
+            <>
+              <View style={styles.summaryGrid}>
+                <View style={styles.summaryBox}>
+                  <Text style={styles.summaryNumber}>{summary.total_performances}</Text>
+                  <Text style={styles.summaryLabel}>músicas cantadas</Text>
+                </View>
+
+                <View style={styles.summaryBox}>
+                  <Text style={styles.summaryNumber}>{summary.total_participants}</Text>
+                  <Text style={styles.summaryLabel}>participantes</Text>
+                </View>
+
+                <View style={styles.summaryBox}>
+                  <Text style={styles.summaryNumber}>{summary.total_skips}</Text>
+                  <Text style={styles.summaryLabel}>pulos de vez</Text>
+                </View>
+
+                <View style={styles.summaryBox}>
+                  <Text style={styles.summaryNumber}>{summary.total_queue_exits}</Text>
+                  <Text style={styles.summaryLabel}>saídas da fila</Text>
+                </View>
+              </View>
+
+              {topSinger ? (
+                <View style={styles.highlightBox}>
+                  <Text style={styles.highlightLabel}>Quem mais cantou</Text>
+                  <Text style={styles.highlightName}>
+                    {topSinger.name} com {topSinger.performances}{' '}
+                    {topSinger.performances === 1 ? 'música' : 'músicas'}
+                  </Text>
+                </View>
+              ) : (
+                <Text style={styles.emptyText}>
+                  Ninguém concluiu uma música. Foi ensaio técnico, aparentemente.
+                </Text>
+              )}
+
+              <View style={styles.rankingBox}>
+                <Text style={styles.cardLabel}>Ranking</Text>
+
+                {summary.ranking.length === 0 ? (
+                  <Text style={styles.emptyText}>Sem ranking para mostrar.</Text>
+                ) : (
+                  summary.ranking.map((item, index) => (
+                    <View key={`${item.member_id}-${index}`} style={styles.rankingItem}>
+                      <Text style={styles.rankingPosition}>{index + 1}</Text>
+
+                      <View style={styles.rankingInfo}>
+                        <Text style={styles.memberName}>{item.name}</Text>
+                        <Text style={styles.memberRole}>
+                          {item.performances}{' '}
+                          {item.performances === 1 ? 'música cantada' : 'músicas cantadas'}
+                        </Text>
+                      </View>
+                    </View>
+                  ))
+                )}
+              </View>
+            </>
+          )}
         </View>
       )}
 
@@ -774,6 +952,35 @@ export function RoomScreen({ room, onBackHome }: RoomScreenProps) {
           })}
       </View>
 
+      <View style={styles.card}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Histórico</Text>
+          <Text style={styles.counter}>{events.length}</Text>
+        </View>
+
+        {isLoadingEvents && (
+          <View style={styles.loadingRow}>
+            <ActivityIndicator />
+            <Text style={styles.loadingText}>Carregando os acontecimentos...</Text>
+          </View>
+        )}
+
+        {eventsError && <Text style={styles.errorText}>{eventsError}</Text>}
+
+        {!isLoadingEvents && !eventsError && events.length === 0 && (
+          <Text style={styles.emptyText}>Nada aconteceu ainda. Silêncio constrangedor.</Text>
+        )}
+
+        {!isLoadingEvents &&
+          !eventsError &&
+          events.map((event) => (
+            <View key={event.id} style={styles.eventItem}>
+              <Text style={styles.eventTime}>{formatEventTime(event.created_at)}</Text>
+              <Text style={styles.eventText}>{formatRoomEventMessage(event)}</Text>
+            </View>
+          ))}
+      </View>
+
       {isOwner && !isRoomClosed && (
         <View style={styles.adminCard}>
           <Text style={styles.sectionTitle}>Administração</Text>
@@ -880,6 +1087,86 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     fontSize: 15,
     lineHeight: 22,
+  },
+  summaryCard: {
+    backgroundColor: '#1C2418',
+    borderRadius: 22,
+    padding: 20,
+    gap: 14,
+    borderWidth: 1,
+    borderColor: '#445C33',
+  },
+  summaryGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  summaryBox: {
+    flexGrow: 1,
+    flexBasis: '45%',
+    backgroundColor: '#242D1D',
+    borderRadius: 18,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#445C33',
+  },
+  summaryNumber: {
+    color: colors.primary,
+    fontSize: 30,
+    fontWeight: '900',
+  },
+  summaryLabel: {
+    color: colors.textMuted,
+    fontSize: 13,
+    lineHeight: 18,
+    marginTop: 2,
+  },
+  highlightBox: {
+    backgroundColor: '#13231D',
+    borderRadius: 18,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#285343',
+  },
+  highlightLabel: {
+    color: colors.textSoft,
+    fontSize: 13,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  highlightName: {
+    color: colors.text,
+    fontSize: 20,
+    fontWeight: '900',
+    marginTop: 4,
+  },
+  rankingBox: {
+    gap: 10,
+  },
+  rankingItem: {
+    backgroundColor: colors.surfaceLight,
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  rankingPosition: {
+    width: 34,
+    height: 34,
+    borderRadius: 999,
+    backgroundColor: colors.primary,
+    color: colors.background,
+    textAlign: 'center',
+    textAlignVertical: 'center',
+    fontSize: 16,
+    fontWeight: '900',
+  },
+  rankingInfo: {
+    flex: 1,
   },
   card: {
     backgroundColor: colors.surface,
@@ -1042,6 +1329,24 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     fontSize: 15,
     lineHeight: 22,
+  },
+  eventItem: {
+    backgroundColor: colors.surfaceLight,
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
+    gap: 4,
+  },
+  eventTime: {
+    color: colors.textSoft,
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  eventText: {
+    color: colors.textMuted,
+    fontSize: 14,
+    lineHeight: 20,
   },
   primaryButton: {
     backgroundColor: colors.primary,

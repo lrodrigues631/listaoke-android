@@ -20,6 +20,7 @@ type FindActiveMemberParams = {
 
 type TransferRoomOwnershipParams = {
   roomId: string;
+  actorMemberId: string;
   newOwnerMemberId: string;
 };
 
@@ -125,10 +126,12 @@ export async function listActiveMembersByRoom(roomId: string): Promise<RoomMembe
 
 export async function transferRoomOwnershipRpc({
   roomId,
+  actorMemberId,
   newOwnerMemberId,
 }: TransferRoomOwnershipParams): Promise<void> {
-  const { error } = await supabase.rpc('transfer_room_ownership', {
+  const { error } = await supabase.rpc('transfer_room_ownership_with_event', {
     p_room_id: roomId,
+    p_actor_member_id: actorMemberId,
     p_new_owner_member_id: newOwnerMemberId,
   });
 

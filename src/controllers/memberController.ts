@@ -15,14 +15,16 @@ export async function loadRoomMembers(roomId: string): Promise<RoomMember[]> {
 
 export async function transferRoomOwnership(
   roomId: string,
+  actorMemberId: string,
   newOwnerMemberId: string
 ): Promise<void> {
-  if (!roomId || !newOwnerMemberId) {
-    throw new Error('Não consegui identificar a sala ou o novo dono.');
+  if (!roomId || !actorMemberId || !newOwnerMemberId) {
+    throw new Error('Não consegui identificar a sala, o dono atual ou o novo dono.');
   }
 
   await transferRoomOwnershipRpc({
     roomId,
+    actorMemberId,
     newOwnerMemberId,
   });
 }

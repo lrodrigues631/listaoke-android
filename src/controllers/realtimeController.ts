@@ -15,6 +15,11 @@ type SubscribeToRoomQueueParams = {
   onChange: () => void;
 };
 
+type SubscribeToRoomEventsParams = {
+  roomId: string;
+  onChange: () => void;
+};
+
 export function subscribeToRoom({ roomId, onChange }: SubscribeToRoomParams) {
   const channel = supabase
     .channel(`room-${roomId}`)
@@ -68,6 +73,28 @@ export function subscribeToRoomQueue({ roomId, onChange }: SubscribeToRoomQueueP
         event: '*',
         schema: 'public',
         table: 'queue_items',
+        filter: `room_id=eq.${roomId}`,
+      },
+      () => {
+        onChange();
+      }
+    )
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
+}
+
+export function subscribeToRoomEvents({ roomId, onChange }: SubscribeToRoomEventsParams) {
+  const channel = supabase
+    .channel(`room-events-${roomId}`)
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'room_events',
         filter: `room_id=eq.${roomId}`,
       },
       () => {
