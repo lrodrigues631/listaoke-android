@@ -18,6 +18,17 @@ type FindActiveMemberParams = {
   userId: string;
 };
 
+type TransferRoomOwnershipParams = {
+  roomId: string;
+  newOwnerMemberId: string;
+};
+
+type RemoveRoomMemberParams = {
+  roomId: string;
+  actorMemberId: string;
+  targetMemberId: string;
+};
+
 export async function createOwnerMember({
   roomId,
   userId,
@@ -110,4 +121,34 @@ export async function listActiveMembersByRoom(roomId: string): Promise<RoomMembe
   }
 
   return (data ?? []) as RoomMember[];
+}
+
+export async function transferRoomOwnershipRpc({
+  roomId,
+  newOwnerMemberId,
+}: TransferRoomOwnershipParams): Promise<void> {
+  const { error } = await supabase.rpc('transfer_room_ownership', {
+    p_room_id: roomId,
+    p_new_owner_member_id: newOwnerMemberId,
+  });
+
+  if (error) {
+    throw new Error(`Não consegui transferir a sala: ${error.message}`);
+  }
+}
+
+export async function removeRoomMemberRpc({
+  roomId,
+  actorMemberId,
+  targetMemberId,
+}: RemoveRoomMemberParams): Promise<void> {
+  const { error } = await supabase.rpc('remove_room_member', {
+    p_room_id: roomId,
+    p_actor_member_id: actorMemberId,
+    p_target_member_id: targetMemberId,
+  });
+
+  if (error) {
+    throw new Error(`Não consegui remover o membro da sala: ${error.message}`);
+  }
 }
