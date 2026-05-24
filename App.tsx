@@ -3,11 +3,12 @@ import { ActivityIndicator, SafeAreaView, StyleSheet, Text, View } from 'react-n
 
 import { colors } from './src/constants/colors';
 import { startAnonymousSession } from './src/controllers/authController';
-import { createRoomFlow } from './src/controllers/roomController';
+import { createRoomFlow, joinRoomFlow } from './src/controllers/roomController';
 import type { AuthStatus } from './src/types/authTypes';
 import type { CurrentRoom } from './src/types/roomTypes';
 import { CreateRoomScreen } from './src/views/screens/CreateRoomScreen';
 import { HomeScreen } from './src/views/screens/HomeScreen';
+import { JoinRoomScreen } from './src/views/screens/JoinRoomScreen';
 import { RoomScreen } from './src/views/screens/RoomScreen';
 
 type AppScreen = 'home' | 'createRoom' | 'joinRoom' | 'room';
@@ -22,6 +23,9 @@ export default function App() {
 
   const [isCreatingRoom, setIsCreatingRoom] = useState(false);
   const [createRoomError, setCreateRoomError] = useState<string | null>(null);
+
+  const [isJoiningRoom, setIsJoiningRoom] = useState(false);
+  const [joinRoomError, setJoinRoomError] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -78,6 +82,32 @@ export default function App() {
     }
   }
 
+  async function handleJoinRoom(roomCode: string, guestName: string) {
+    if (!userId) {
+      setJoinRoomError('Ainda não identifiquei seu usuário anônimo. Tenta de novo em alguns segundos.');
+      return;
+    }
+
+    try {
+      setJoinRoomError(null);
+      setIsJoiningRoom(true);
+
+      const joinedRoom = await joinRoomFlow({
+        roomCode,
+        guestName,
+        userId,
+      });
+
+      setCurrentRoom(joinedRoom);
+      setScreen('room');
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido ao entrar na sala.';
+      setJoinRoomError(errorMessage);
+    } finally {
+      setIsJoiningRoom(false);
+    }
+  }
+
   if (authStatus === 'loading') {
     return (
       <SafeAreaView style={styles.centerContainer}>
@@ -119,14 +149,16 @@ export default function App() {
 
   if (screen === 'joinRoom') {
     return (
-      <SafeAreaView style={styles.centerContainer}>
-        <Text style={styles.placeholderTitle}>Entrar com código</Text>
-        <Text style={styles.placeholderText}>
-          Próxima etapa. Aqui vamos criar a entrada por código da sala.
-        </Text>
-        <Text style={styles.linkText} onPress={() => setScreen('home')}>
-          Voltar
-        </Text>
+      <SafeAreaView style={styles.appContainer}>
+        <JoinRoomScreen
+          isJoining={isJoiningRoom}
+          errorMessage={joinRoomError}
+          onBack={() => {
+            setJoinRoomError(null);
+            setScreen('home');
+          }}
+          onJoinRoom={handleJoinRoom}
+        />
       </SafeAreaView>
     );
   }
@@ -139,6 +171,7 @@ export default function App() {
           onBackHome={() => {
             setCurrentRoom(null);
             setCreateRoomError(null);
+            setJoinRoomError(null);
             setScreen('home');
           }}
         />
@@ -155,7 +188,10 @@ export default function App() {
           setCreateRoomError(null);
           setScreen('createRoom');
         }}
-        onJoinRoom={() => setScreen('joinRoom')}
+        onJoinRoom={() => {
+          setJoinRoomError(null);
+          setScreen('joinRoom');
+        }}
       />
     </SafeAreaView>
   );
@@ -199,23 +235,5 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     fontSize: 14,
     lineHeight: 22,
-  },
-  placeholderTitle: {
-    color: colors.text,
-    fontSize: 30,
-    fontWeight: '900',
-    marginBottom: 12,
-  },
-  placeholderText: {
-    color: colors.textMuted,
-    fontSize: 16,
-    lineHeight: 24,
-    textAlign: 'center',
-    marginBottom: 24,
-  },
-  linkText: {
-    color: colors.primary,
-    fontSize: 16,
-    fontWeight: '800',
   },
 });
