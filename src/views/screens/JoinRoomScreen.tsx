@@ -40,6 +40,11 @@ export function JoinRoomScreen({
       return;
     }
 
+    if (cleanRoomCode.length !== 4) {
+      setLocalError('O código da sala tem 4 números. Confere aí antes de culpar o app.');
+      return;
+    }
+
     if (!cleanGuestName) {
       setLocalError('Coloca seu nome ou apelido. A fila precisa saber quem é você.');
       return;
@@ -65,7 +70,7 @@ export function JoinRoomScreen({
           <Text style={styles.title}>Ache o karaokê da turma.</Text>
 
           <Text style={styles.subtitle}>
-            Digite o código que mandaram no grupo e escolha o nome que vai aparecer para todo mundo.
+            Digite os 4 números que mandaram no grupo e escolha o nome que vai aparecer para todo mundo.
           </Text>
         </View>
 
@@ -77,11 +82,11 @@ export function JoinRoomScreen({
               editable={!isJoining}
               value={roomCode}
               onChangeText={(value) => setRoomCode(normalizeRoomCode(value))}
-              placeholder="Ex: ABC123"
+              placeholder="Ex: 0427"
               placeholderTextColor="#737380"
               style={styles.input}
-              autoCapitalize="characters"
-              maxLength={12}
+              keyboardType="number-pad"
+              maxLength={4}
             />
           </View>
 
