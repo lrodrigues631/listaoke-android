@@ -1,10 +1,11 @@
 import {
-  addMemberToQueue,
-  finishOnStageQueueItem,
-  finishOwnOnStageQueueItem,
+  finishOwnTurnRpc,
+  joinQueueRpc,
+  leaveOwnQueueRpc,
   listActiveQueueItemsByRoom,
-  moveNextWaitingMemberToStage,
-  removeMemberFromQueue,
+  moveOwnTurnDownRpc,
+  ownerRemoveQueueItemRpc,
+  skipOwnTurnRpc,
 } from '../models/queueModel';
 import type { QueueItem } from '../types/queueTypes';
 
@@ -21,7 +22,7 @@ export async function joinQueue(roomId: string, memberId: string): Promise<void>
     throw new Error('Não consegui identificar sua sala ou seu membro.');
   }
 
-  await addMemberToQueue({ roomId, memberId });
+  await joinQueueRpc({ roomId, memberId });
 }
 
 export async function leaveQueue(roomId: string, memberId: string): Promise<void> {
@@ -29,29 +30,45 @@ export async function leaveQueue(roomId: string, memberId: string): Promise<void
     throw new Error('Não consegui identificar sua sala ou seu membro.');
   }
 
-  await removeMemberFromQueue({ roomId, memberId });
+  await leaveOwnQueueRpc({ roomId, memberId });
 }
 
-export async function callNextToStage(roomId: string): Promise<void> {
-  if (!roomId) {
-    throw new Error('Não consegui identificar a sala.');
-  }
-
-  await moveNextWaitingMemberToStage(roomId);
-}
-
-export async function finishCurrentPerformance(roomId: string): Promise<void> {
-  if (!roomId) {
-    throw new Error('Não consegui identificar a sala.');
-  }
-
-  await finishOnStageQueueItem(roomId);
-}
-
-export async function finishMyPerformance(roomId: string, memberId: string): Promise<void> {
+export async function skipMyTurn(roomId: string, memberId: string): Promise<void> {
   if (!roomId || !memberId) {
     throw new Error('Não consegui identificar sua sala ou seu membro.');
   }
 
-  await finishOwnOnStageQueueItem({ roomId, memberId });
+  await skipOwnTurnRpc({ roomId, memberId });
+}
+
+export async function finishMyTurn(roomId: string, memberId: string): Promise<void> {
+  if (!roomId || !memberId) {
+    throw new Error('Não consegui identificar sua sala ou seu membro.');
+  }
+
+  await finishOwnTurnRpc({ roomId, memberId });
+}
+
+export async function moveMyTurnDown(roomId: string, memberId: string): Promise<void> {
+  if (!roomId || !memberId) {
+    throw new Error('Não consegui identificar sua sala ou seu membro.');
+  }
+
+  await moveOwnTurnDownRpc({ roomId, memberId });
+}
+
+export async function ownerRemoveFromQueue(
+  roomId: string,
+  actorMemberId: string,
+  targetQueueItemId: string
+): Promise<void> {
+  if (!roomId || !actorMemberId || !targetQueueItemId) {
+    throw new Error('Não consegui identificar sala, dono ou item da fila.');
+  }
+
+  await ownerRemoveQueueItemRpc({
+    roomId,
+    actorMemberId,
+    targetQueueItemId,
+  });
 }

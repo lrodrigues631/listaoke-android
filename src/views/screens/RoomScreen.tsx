@@ -12,12 +12,13 @@ import {
 import { colors } from '../../constants/colors';
 import { loadRoomMembers } from '../../controllers/memberController';
 import {
-  callNextToStage,
-  finishCurrentPerformance,
-  finishMyPerformance,
+  finishMyTurn,
   joinQueue,
   leaveQueue,
   loadRoomQueue,
+  moveMyTurnDown,
+  ownerRemoveFromQueue,
+  skipMyTurn,
 } from '../../controllers/queueController';
 import { subscribeToRoomMembers, subscribeToRoomQueue } from '../../controllers/realtimeController';
 import type { QueueItem } from '../../types/queueTypes';
@@ -42,14 +43,11 @@ export function RoomScreen({ room, onBackHome }: RoomScreenProps) {
   const fetchMembers = useCallback(async () => {
     try {
       setMembersError(null);
-
       const loadedMembers = await loadRoomMembers(room.roomId);
-
       setMembers(loadedMembers);
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : 'Erro desconhecido ao carregar membros.';
-
       setMembersError(errorMessage);
     } finally {
       setIsLoadingMembers(false);
@@ -59,14 +57,11 @@ export function RoomScreen({ room, onBackHome }: RoomScreenProps) {
   const fetchQueue = useCallback(async () => {
     try {
       setQueueError(null);
-
       const loadedQueue = await loadRoomQueue(room.roomId);
-
       setQueueItems(loadedQueue);
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : 'Erro desconhecido ao carregar fila.';
-
       setQueueError(errorMessage);
     } finally {
       setIsLoadingQueue(false);
@@ -105,8 +100,15 @@ export function RoomScreen({ room, onBackHome }: RoomScreenProps) {
   const myQueueItem = queueItems.find((item) => item.member_id === room.memberId) ?? null;
 
   const isOwner = room.memberRole === 'owner';
-  const isInQueue = Boolean(myQueueItem);
   const isMeOnStage = myQueueItem?.status === 'on_stage';
+  const isMeWaiting = myQueueItem?.status === 'waiting';
+  const isInQueue = Boolean(myQueueItem);
+
+  const canMoveMyTurnDown =
+    isMeWaiting && waitingQueue.length > 1 && waitingQueue.at(-1)?.member_id !== room.memberId;
+
+  const currentOnStageMember = currentOnStage ? membersById[currentOnStage.member_id] : null;
+  const roleLabel = isOwner ? 'Dono' : 'Convidado';
 
   async function runQueueAction(action: () => Promise<void>) {
     try {
@@ -125,8 +127,45 @@ export function RoomScreen({ room, onBackHome }: RoomScreenProps) {
     }
   }
 
-  const roleLabel = isOwner ? 'Dono' : 'Convidado';
-  const currentOnStageMember = currentOnStage ? membersById[currentOnStage.member_id] : null;
+  function confirmOwnerRemoveQueueItem(item: QueueItem) {
+    const targetMember = membersById[item.member_id];
+    const targetName = targetMember?.name ?? 'Participante';
+
+    Alert.alert(
+      'Remover da fila?',
+      `Você quer remover ${targetName} ${item.status === 'on_stage' ? 'do palco' : 'da fila'}?`,
+      [
+        {
+          text: 'Cancelar',
+          style: 'cancel',
+        },
+        {
+          text: 'Remover',
+          style: 'destructive',
+          onPress: () =>
+            runQueueAction(() => ownerRemoveFromQueue(room.roomId, room.memberId, item.id)),
+        },
+      ]
+    );
+  }
+
+  function confirmStopSinging() {
+    Alert.alert(
+      'Parar de cantar?',
+      'Você vai sair da fila. Para voltar, é só entrar de novo depois.',
+      [
+        {
+          text: 'Cancelar',
+          style: 'cancel',
+        },
+        {
+          text: 'Parar de cantar',
+          style: 'destructive',
+          onPress: () => runQueueAction(() => leaveQueue(room.roomId, room.memberId)),
+        },
+      ]
+    );
+  }
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
@@ -153,56 +192,72 @@ export function RoomScreen({ room, onBackHome }: RoomScreenProps) {
               {currentOnStageMember?.name ?? 'Alguém misterioso'}
             </Text>
 
-            {isMeOnStage && (
-              <Text style={styles.stageHint}>Você está no palco. Manda ver.</Text>
+            {isMeOnStage ? (
+              <Text style={styles.stageHint}>
+                Você está no palco. Concluir ou pular manda você para o fim da fila.
+              </Text>
+            ) : (
+              <Text style={styles.stageHint}>A vez está rolando. Respeita o show.</Text>
             )}
 
-            {(isOwner || isMeOnStage) && (
+            {isMeOnStage && (
+              <View style={styles.buttonGroup}>
+                <TouchableOpacity
+                  disabled={isChangingQueue}
+                  style={[styles.primaryButton, isChangingQueue && styles.disabledButton]}
+                  onPress={() => runQueueAction(() => finishMyTurn(room.roomId, room.memberId))}
+                >
+                  {isChangingQueue ? (
+                    <ActivityIndicator />
+                  ) : (
+                    <Text style={styles.primaryButtonText}>Concluir e voltar ao fim</Text>
+                  )}
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  disabled={isChangingQueue}
+                  style={[styles.warningButton, isChangingQueue && styles.disabledButton]}
+                  onPress={() => runQueueAction(() => skipMyTurn(room.roomId, room.memberId))}
+                >
+                  {isChangingQueue ? (
+                    <ActivityIndicator />
+                  ) : (
+                    <Text style={styles.warningButtonText}>Pular e voltar ao fim</Text>
+                  )}
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  disabled={isChangingQueue}
+                  style={[styles.dangerButton, isChangingQueue && styles.disabledButton]}
+                  onPress={confirmStopSinging}
+                >
+                  {isChangingQueue ? (
+                    <ActivityIndicator />
+                  ) : (
+                    <Text style={styles.dangerButtonText}>Parar de cantar</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {isOwner && !isMeOnStage && (
               <TouchableOpacity
                 disabled={isChangingQueue}
-                style={[styles.primaryButton, isChangingQueue && styles.disabledButton]}
-                onPress={() =>
-                  runQueueAction(async () => {
-                    if (isOwner) {
-                      await finishCurrentPerformance(room.roomId);
-                      return;
-                    }
-
-                    await finishMyPerformance(room.roomId, room.memberId);
-                  })
-                }
+                style={[styles.dangerButton, isChangingQueue && styles.disabledButton]}
+                onPress={() => confirmOwnerRemoveQueueItem(currentOnStage)}
               >
                 {isChangingQueue ? (
                   <ActivityIndicator />
                 ) : (
-                  <Text style={styles.primaryButtonText}>Concluir apresentação</Text>
+                  <Text style={styles.dangerButtonText}>Remover do palco</Text>
                 )}
               </TouchableOpacity>
             )}
           </>
         ) : (
-          <>
-            <Text style={styles.emptyText}>
-              Ninguém no palco ainda. O microfone está julgando em silêncio.
-            </Text>
-
-            {isOwner && (
-              <TouchableOpacity
-                disabled={isChangingQueue || waitingQueue.length === 0}
-                style={[
-                  styles.primaryButton,
-                  (isChangingQueue || waitingQueue.length === 0) && styles.disabledButton,
-                ]}
-                onPress={() => runQueueAction(() => callNextToStage(room.roomId))}
-              >
-                {isChangingQueue ? (
-                  <ActivityIndicator />
-                ) : (
-                  <Text style={styles.primaryButtonText}>Chamar próximo</Text>
-                )}
-              </TouchableOpacity>
-            )}
-          </>
+          <Text style={styles.emptyText}>
+            Ninguém no palco agora. Quando alguém entrar na fila, o app chama sozinho.
+          </Text>
         )}
       </View>
 
@@ -212,45 +267,86 @@ export function RoomScreen({ room, onBackHome }: RoomScreenProps) {
         {isMeOnStage ? (
           <>
             <Text style={styles.participationText}>
-              Você está no palco. Manda ver.
+              Você está cantando agora. Depois da sua vez, pode voltar para o fim da fila ou parar.
             </Text>
 
-            <TouchableOpacity
-              disabled={isChangingQueue}
-              style={[styles.primaryButton, isChangingQueue && styles.disabledButton]}
-              onPress={() =>
-                runQueueAction(() => finishMyPerformance(room.roomId, room.memberId))
-              }
-            >
-              {isChangingQueue ? (
-                <ActivityIndicator />
-              ) : (
-                <Text style={styles.primaryButtonText}>Concluir minha vez</Text>
-              )}
-            </TouchableOpacity>
+            <View style={styles.buttonGroup}>
+              <TouchableOpacity
+                disabled={isChangingQueue}
+                style={[styles.primaryButton, isChangingQueue && styles.disabledButton]}
+                onPress={() => runQueueAction(() => finishMyTurn(room.roomId, room.memberId))}
+              >
+                {isChangingQueue ? (
+                  <ActivityIndicator />
+                ) : (
+                  <Text style={styles.primaryButtonText}>Concluir e voltar ao fim</Text>
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                disabled={isChangingQueue}
+                style={[styles.warningButton, isChangingQueue && styles.disabledButton]}
+                onPress={() => runQueueAction(() => skipMyTurn(room.roomId, room.memberId))}
+              >
+                {isChangingQueue ? (
+                  <ActivityIndicator />
+                ) : (
+                  <Text style={styles.warningButtonText}>Pular e voltar ao fim</Text>
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                disabled={isChangingQueue}
+                style={[styles.dangerButton, isChangingQueue && styles.disabledButton]}
+                onPress={confirmStopSinging}
+              >
+                {isChangingQueue ? (
+                  <ActivityIndicator />
+                ) : (
+                  <Text style={styles.dangerButtonText}>Parar de cantar</Text>
+                )}
+              </TouchableOpacity>
+            </View>
           </>
-        ) : isInQueue ? (
+        ) : isMeWaiting ? (
           <>
             <Text style={styles.participationText}>
-              Você está na fila. Já vai aquecendo a voz, ou pelo menos inventando confiança.
+              Você está esperando sua vez. Pode adiar ou sair da fila.
             </Text>
 
-            <TouchableOpacity
-              disabled={isChangingQueue}
-              style={[styles.dangerButton, isChangingQueue && styles.disabledButton]}
-              onPress={() => runQueueAction(() => leaveQueue(room.roomId, room.memberId))}
-            >
-              {isChangingQueue ? (
-                <ActivityIndicator />
-              ) : (
-                <Text style={styles.dangerButtonText}>Sair da fila</Text>
-              )}
-            </TouchableOpacity>
+            <View style={styles.buttonGroup}>
+              <TouchableOpacity
+                disabled={isChangingQueue || !canMoveMyTurnDown}
+                style={[
+                  styles.secondaryActionButton,
+                  (isChangingQueue || !canMoveMyTurnDown) && styles.disabledButton,
+                ]}
+                onPress={() => runQueueAction(() => moveMyTurnDown(room.roomId, room.memberId))}
+              >
+                {isChangingQueue ? (
+                  <ActivityIndicator />
+                ) : (
+                  <Text style={styles.secondaryActionButtonText}>Adiar minha vez</Text>
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                disabled={isChangingQueue}
+                style={[styles.dangerButton, isChangingQueue && styles.disabledButton]}
+                onPress={() => runQueueAction(() => leaveQueue(room.roomId, room.memberId))}
+              >
+                {isChangingQueue ? (
+                  <ActivityIndicator />
+                ) : (
+                  <Text style={styles.dangerButtonText}>Sair da fila</Text>
+                )}
+              </TouchableOpacity>
+            </View>
           </>
         ) : (
           <>
             <Text style={styles.participationText}>
-              Você ainda não entrou na fila. Está só observando o caos por enquanto.
+              Você ainda não entrou na fila. Quando entrar, se o palco estiver vazio, sua vez começa na hora.
             </Text>
 
             <TouchableOpacity
@@ -270,7 +366,7 @@ export function RoomScreen({ room, onBackHome }: RoomScreenProps) {
 
       <View style={styles.card}>
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Fila</Text>
+          <Text style={styles.sectionTitle}>Fila de espera</Text>
           <Text style={styles.counter}>{waitingQueue.length}</Text>
         </View>
 
@@ -284,13 +380,16 @@ export function RoomScreen({ room, onBackHome }: RoomScreenProps) {
         {queueError && <Text style={styles.errorText}>{queueError}</Text>}
 
         {!isLoadingQueue && !queueError && waitingQueue.length === 0 && (
-          <Text style={styles.emptyText}>A fila está vazia. Coragem, alguém precisa começar.</Text>
+          <Text style={styles.emptyText}>
+            Ninguém esperando. Quem está no palco pode continuar girando ou parar de cantar.
+          </Text>
         )}
 
         {!isLoadingQueue &&
           !queueError &&
           waitingQueue.map((item, index) => {
             const member = membersById[item.member_id];
+            const isThisMe = item.member_id === room.memberId;
 
             return (
               <View key={item.id} style={styles.queueItem}>
@@ -303,7 +402,17 @@ export function RoomScreen({ room, onBackHome }: RoomScreenProps) {
                   </Text>
                 </View>
 
-                {item.member_id === room.memberId && <Text style={styles.youBadge}>Você</Text>}
+                {isThisMe && <Text style={styles.youBadge}>Você</Text>}
+
+                {isOwner && (
+                  <TouchableOpacity
+                    disabled={isChangingQueue}
+                    style={[styles.smallDangerButton, isChangingQueue && styles.disabledButton]}
+                    onPress={() => confirmOwnerRemoveQueueItem(item)}
+                  >
+                    <Text style={styles.smallDangerButtonText}>Remover</Text>
+                  </TouchableOpacity>
+                )}
               </View>
             );
           })}
@@ -447,6 +556,9 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 22,
   },
+  buttonGroup: {
+    gap: 10,
+  },
   loadingRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -479,7 +591,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
   },
   queuePosition: {
     width: 34,
@@ -531,6 +643,34 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '900',
   },
+  secondaryActionButton: {
+    backgroundColor: colors.surfaceLight,
+    borderColor: colors.border,
+    borderWidth: 1,
+    borderRadius: 18,
+    paddingVertical: 16,
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  secondaryActionButtonText: {
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: '900',
+  },
+  warningButton: {
+    backgroundColor: '#3A321E',
+    borderColor: '#7A6428',
+    borderWidth: 1,
+    borderRadius: 18,
+    paddingVertical: 16,
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  warningButtonText: {
+    color: '#FDE68A',
+    fontSize: 16,
+    fontWeight: '900',
+  },
   dangerButton: {
     backgroundColor: '#3A1F25',
     borderColor: '#7F2D3A',
@@ -543,6 +683,19 @@ const styles = StyleSheet.create({
   dangerButtonText: {
     color: colors.danger,
     fontSize: 16,
+    fontWeight: '900',
+  },
+  smallDangerButton: {
+    backgroundColor: '#3A1F25',
+    borderColor: '#7F2D3A',
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+  },
+  smallDangerButtonText: {
+    color: colors.danger,
+    fontSize: 12,
     fontWeight: '900',
   },
   disabledButton: {
