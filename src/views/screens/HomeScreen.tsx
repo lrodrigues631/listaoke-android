@@ -1,19 +1,25 @@
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
+import { colors } from '../../constants/colors';
+
 type HomeScreenProps = {
   userId: string | null;
+  authMessage: string;
   onCreateRoom: () => void;
   onJoinRoom: () => void;
 };
 
-export function HomeScreen({ userId, onCreateRoom, onJoinRoom }: HomeScreenProps) {
+export function HomeScreen({ userId, authMessage, onCreateRoom, onJoinRoom }: HomeScreenProps) {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.badge}>Listaokê Mobile</Text>
-        <Text style={styles.title}>Karaokê sem bagunça na fila.</Text>
+
+        <Text style={styles.title}>Karaokê sem guerra civil na fila.</Text>
+
         <Text style={styles.subtitle}>
-          Crie uma sala, compartilhe o código e deixe a turma disputar o microfone com um pouco mais de dignidade.
+          Crie uma sala, compartilhe o código e deixe todo mundo acompanhar quem canta agora,
+          quem está na fila e quem está só enrolando.
         </Text>
       </View>
 
@@ -29,7 +35,7 @@ export function HomeScreen({ userId, onCreateRoom, onJoinRoom }: HomeScreenProps
 
       <View style={styles.footer}>
         <Text style={styles.footerText}>
-          {userId ? 'Usuário anônimo conectado. Tudo certo por aqui.' : 'Conectando usuário anônimo...'}
+          {userId ? authMessage : 'Conectando usuário anônimo...'}
         </Text>
       </View>
     </View>
@@ -39,7 +45,7 @@ export function HomeScreen({ userId, onCreateRoom, onJoinRoom }: HomeScreenProps
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#101014',
+    backgroundColor: colors.background,
     padding: 24,
     justifyContent: 'space-between',
   },
@@ -48,20 +54,20 @@ const styles = StyleSheet.create({
     paddingTop: 64,
   },
   badge: {
-    color: '#A7F3D0',
+    color: colors.primary,
     fontSize: 14,
     fontWeight: '700',
     letterSpacing: 0.5,
     textTransform: 'uppercase',
   },
   title: {
-    color: '#FFFFFF',
+    color: colors.text,
     fontSize: 38,
     lineHeight: 44,
     fontWeight: '900',
   },
   subtitle: {
-    color: '#C9C9D1',
+    color: colors.textMuted,
     fontSize: 17,
     lineHeight: 26,
   },
@@ -69,34 +75,34 @@ const styles = StyleSheet.create({
     gap: 14,
   },
   primaryButton: {
-    backgroundColor: '#A7F3D0',
+    backgroundColor: colors.primary,
     borderRadius: 18,
     paddingVertical: 18,
     alignItems: 'center',
   },
   primaryButtonText: {
-    color: '#101014',
+    color: colors.background,
     fontSize: 17,
-    fontWeight: '800',
+    fontWeight: '900',
   },
   secondaryButton: {
-    backgroundColor: '#24242D',
+    backgroundColor: colors.surfaceLight,
     borderRadius: 18,
     paddingVertical: 18,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#353542',
+    borderColor: colors.border,
   },
   secondaryButtonText: {
-    color: '#FFFFFF',
+    color: colors.text,
     fontSize: 17,
-    fontWeight: '800',
+    fontWeight: '900',
   },
   footer: {
     paddingBottom: 16,
   },
   footerText: {
-    color: '#8E8E9A',
+    color: colors.textSoft,
     fontSize: 13,
     lineHeight: 20,
   },

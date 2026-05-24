@@ -1,49 +1,39 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, SafeAreaView, StyleSheet, Text, View } from 'react-native';
 
-import { supabase } from './src/config/supabase';
-import { CreateRoomScreen } from './src/screens/CreateRoomScreen';
-import { HomeScreen } from './src/screens/HomeScreen';
+import { colors } from './src/constants/colors';
+import { startAnonymousSession } from './src/controllers/authController';
+import { createRoomFlow } from './src/controllers/roomController';
+import type { AuthStatus } from './src/types/authTypes';
+import type { CurrentRoom } from './src/types/roomTypes';
+import { CreateRoomScreen } from './src/views/screens/CreateRoomScreen';
+import { HomeScreen } from './src/views/screens/HomeScreen';
+import { RoomScreen } from './src/views/screens/RoomScreen';
 
-type AuthStatus = 'loading' | 'success' | 'error';
-type AppScreen = 'home' | 'createRoom' | 'joinRoom';
+type AppScreen = 'home' | 'createRoom' | 'joinRoom' | 'room';
 
 export default function App() {
   const [authStatus, setAuthStatus] = useState<AuthStatus>('loading');
   const [authMessage, setAuthMessage] = useState('Conectando ao Supabase...');
   const [userId, setUserId] = useState<string | null>(null);
+
   const [screen, setScreen] = useState<AppScreen>('home');
+  const [currentRoom, setCurrentRoom] = useState<CurrentRoom | null>(null);
+
+  const [isCreatingRoom, setIsCreatingRoom] = useState(false);
+  const [createRoomError, setCreateRoomError] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
 
-    async function startAnonymousSession() {
+    async function bootstrapAuth() {
       try {
-        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-
-        if (sessionError) {
-          throw sessionError;
-        }
-
-        if (sessionData.session?.user) {
-          if (!isMounted) return;
-
-          setUserId(sessionData.session.user.id);
-          setAuthMessage('Sessão anônima recuperada. O karaokê ainda vive.');
-          setAuthStatus('success');
-          return;
-        }
-
-        const { data, error } = await supabase.auth.signInAnonymously();
-
-        if (error) {
-          throw error;
-        }
+        const result = await startAnonymousSession();
 
         if (!isMounted) return;
 
-        setUserId(data.user?.id ?? null);
-        setAuthMessage('Usuário anônimo criado. Bora montar essa fila.');
+        setUserId(result.userId);
+        setAuthMessage(result.message);
         setAuthStatus('success');
       } catch (error) {
         if (!isMounted) return;
@@ -55,12 +45,38 @@ export default function App() {
       }
     }
 
-    startAnonymousSession();
+    bootstrapAuth();
 
     return () => {
       isMounted = false;
     };
   }, []);
+
+  async function handleCreateRoom(roomName: string, ownerName: string) {
+    if (!userId) {
+      setCreateRoomError('Ainda não identifiquei seu usuário anônimo. Tenta de novo em alguns segundos.');
+      return;
+    }
+
+    try {
+      setCreateRoomError(null);
+      setIsCreatingRoom(true);
+
+      const createdRoom = await createRoomFlow({
+        roomName,
+        ownerName,
+        userId,
+      });
+
+      setCurrentRoom(createdRoom);
+      setScreen('room');
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido ao criar sala.';
+      setCreateRoomError(errorMessage);
+    } finally {
+      setIsCreatingRoom(false);
+    }
+  }
 
   if (authStatus === 'loading') {
     return (
@@ -89,10 +105,13 @@ export default function App() {
     return (
       <SafeAreaView style={styles.appContainer}>
         <CreateRoomScreen
-          onBack={() => setScreen('home')}
-          onCreateRoom={(roomName, ownerName) => {
-            console.log('Criar sala:', { roomName, ownerName, userId });
+          isCreating={isCreatingRoom}
+          errorMessage={createRoomError}
+          onBack={() => {
+            setCreateRoomError(null);
+            setScreen('home');
           }}
+          onCreateRoom={handleCreateRoom}
         />
       </SafeAreaView>
     );
@@ -103,7 +122,7 @@ export default function App() {
       <SafeAreaView style={styles.centerContainer}>
         <Text style={styles.placeholderTitle}>Entrar com código</Text>
         <Text style={styles.placeholderText}>
-          Próxima etapa. Aqui o convidado vai entrar na sala.
+          Próxima etapa. Aqui vamos criar a entrada por código da sala.
         </Text>
         <Text style={styles.linkText} onPress={() => setScreen('home')}>
           Voltar
@@ -112,11 +131,30 @@ export default function App() {
     );
   }
 
+  if (screen === 'room' && currentRoom) {
+    return (
+      <SafeAreaView style={styles.appContainer}>
+        <RoomScreen
+          room={currentRoom}
+          onBackHome={() => {
+            setCurrentRoom(null);
+            setCreateRoomError(null);
+            setScreen('home');
+          }}
+        />
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.appContainer}>
       <HomeScreen
         userId={userId}
-        onCreateRoom={() => setScreen('createRoom')}
+        authMessage={authMessage}
+        onCreateRoom={() => {
+          setCreateRoomError(null);
+          setScreen('createRoom');
+        }}
         onJoinRoom={() => setScreen('joinRoom')}
       />
     </SafeAreaView>
@@ -126,57 +164,57 @@ export default function App() {
 const styles = StyleSheet.create({
   appContainer: {
     flex: 1,
-    backgroundColor: '#101014',
+    backgroundColor: colors.background,
   },
   centerContainer: {
     flex: 1,
-    backgroundColor: '#101014',
+    backgroundColor: colors.background,
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24,
   },
   loadingText: {
-    color: '#FFFFFF',
+    color: colors.text,
     marginTop: 16,
     fontSize: 16,
   },
   errorCard: {
     width: '100%',
-    backgroundColor: '#1B1B22',
+    backgroundColor: colors.surface,
     borderRadius: 24,
     padding: 24,
     gap: 12,
   },
   errorTitle: {
-    color: '#FCA5A5',
+    color: colors.danger,
     fontSize: 24,
     fontWeight: '900',
   },
   errorText: {
-    color: '#FFFFFF',
+    color: colors.text,
     fontSize: 16,
     lineHeight: 24,
   },
   errorHint: {
-    color: '#C9C9D1',
+    color: colors.textMuted,
     fontSize: 14,
     lineHeight: 22,
   },
   placeholderTitle: {
-    color: '#FFFFFF',
+    color: colors.text,
     fontSize: 30,
     fontWeight: '900',
     marginBottom: 12,
   },
   placeholderText: {
-    color: '#C9C9D1',
+    color: colors.textMuted,
     fontSize: 16,
     lineHeight: 24,
     textAlign: 'center',
     marginBottom: 24,
   },
   linkText: {
-    color: '#A7F3D0',
+    color: colors.primary,
     fontSize: 16,
     fontWeight: '800',
   },

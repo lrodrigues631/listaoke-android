@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -10,31 +11,40 @@ import {
   View,
 } from 'react-native';
 
+import { colors } from '../../constants/colors';
+
 type CreateRoomScreenProps = {
+  isCreating: boolean;
+  errorMessage: string | null;
   onBack: () => void;
   onCreateRoom: (roomName: string, ownerName: string) => void;
 };
 
-export function CreateRoomScreen({ onBack, onCreateRoom }: CreateRoomScreenProps) {
+export function CreateRoomScreen({
+  isCreating,
+  errorMessage,
+  onBack,
+  onCreateRoom,
+}: CreateRoomScreenProps) {
   const [roomName, setRoomName] = useState('');
   const [ownerName, setOwnerName] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  const [localError, setLocalError] = useState<string | null>(null);
 
   function handleCreateRoom() {
     const cleanRoomName = roomName.trim();
     const cleanOwnerName = ownerName.trim();
 
     if (!cleanRoomName) {
-      setError('Dá um nome para a sala. “Karaokê aleatório” até vale, mas precisa ter nome.');
+      setLocalError('Dá um nome para a sala. “Karaokê aleatório” até vale, mas precisa ter nome.');
       return;
     }
 
     if (!cleanOwnerName) {
-      setError('Coloca seu nome ou apelido. O microfone precisa saber quem manda.');
+      setLocalError('Coloca seu nome ou apelido. O microfone precisa saber quem manda.');
       return;
     }
 
-    setError(null);
+    setLocalError(null);
     onCreateRoom(cleanRoomName, cleanOwnerName);
   }
 
@@ -45,21 +55,26 @@ export function CreateRoomScreen({ onBack, onCreateRoom }: CreateRoomScreenProps
     >
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
         <View style={styles.header}>
-          <TouchableOpacity onPress={onBack} style={styles.backButton}>
+          <TouchableOpacity disabled={isCreating} onPress={onBack} style={styles.backButton}>
             <Text style={styles.backButtonText}>Voltar</Text>
           </TouchableOpacity>
 
           <Text style={styles.badge}>Nova sala</Text>
+
           <Text style={styles.title}>Monte o palco da turma.</Text>
+
           <Text style={styles.subtitle}>
-            Crie uma sala, compartilhe o código e deixe a fila organizada antes que alguém grite “é minha vez”.
+            Crie uma sala, compartilhe o código e deixe a fila organizada antes que alguém grite
+            “é minha vez”.
           </Text>
         </View>
 
         <View style={styles.form}>
           <View style={styles.field}>
             <Text style={styles.label}>Nome da sala</Text>
+
             <TextInput
+              editable={!isCreating}
               value={roomName}
               onChangeText={setRoomName}
               placeholder="Ex: Karaokê de sábado"
@@ -71,7 +86,9 @@ export function CreateRoomScreen({ onBack, onCreateRoom }: CreateRoomScreenProps
 
           <View style={styles.field}>
             <Text style={styles.label}>Seu nome</Text>
+
             <TextInput
+              editable={!isCreating}
               value={ownerName}
               onChangeText={setOwnerName}
               placeholder="Ex: Leandro"
@@ -81,10 +98,20 @@ export function CreateRoomScreen({ onBack, onCreateRoom }: CreateRoomScreenProps
             />
           </View>
 
-          {error && <Text style={styles.errorText}>{error}</Text>}
+          {(localError || errorMessage) && (
+            <Text style={styles.errorText}>{localError || errorMessage}</Text>
+          )}
 
-          <TouchableOpacity style={styles.primaryButton} onPress={handleCreateRoom}>
-            <Text style={styles.primaryButtonText}>Criar sala</Text>
+          <TouchableOpacity
+            disabled={isCreating}
+            style={[styles.primaryButton, isCreating && styles.disabledButton]}
+            onPress={handleCreateRoom}
+          >
+            {isCreating ? (
+              <ActivityIndicator />
+            ) : (
+              <Text style={styles.primaryButtonText}>Criar sala</Text>
+            )}
           </TouchableOpacity>
         </View>
 
@@ -99,11 +126,11 @@ export function CreateRoomScreen({ onBack, onCreateRoom }: CreateRoomScreenProps
 const styles = StyleSheet.create({
   keyboardView: {
     flex: 1,
-    backgroundColor: '#101014',
+    backgroundColor: colors.background,
   },
   container: {
     flexGrow: 1,
-    backgroundColor: '#101014',
+    backgroundColor: colors.background,
     padding: 24,
     justifyContent: 'space-between',
   },
@@ -113,18 +140,18 @@ const styles = StyleSheet.create({
   },
   backButton: {
     alignSelf: 'flex-start',
-    backgroundColor: '#24242D',
+    backgroundColor: colors.surfaceLight,
     borderRadius: 999,
     paddingHorizontal: 16,
     paddingVertical: 10,
   },
   backButtonText: {
-    color: '#FFFFFF',
+    color: colors.text,
     fontSize: 14,
     fontWeight: '800',
   },
   badge: {
-    color: '#A7F3D0',
+    color: colors.primary,
     fontSize: 14,
     fontWeight: '700',
     letterSpacing: 0.5,
@@ -132,13 +159,13 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   title: {
-    color: '#FFFFFF',
+    color: colors.text,
     fontSize: 36,
     lineHeight: 42,
     fontWeight: '900',
   },
   subtitle: {
-    color: '#C9C9D1',
+    color: colors.textMuted,
     fontSize: 17,
     lineHeight: 26,
   },
@@ -150,39 +177,42 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   label: {
-    color: '#FFFFFF',
+    color: colors.text,
     fontSize: 15,
     fontWeight: '800',
   },
   input: {
-    backgroundColor: '#1B1B22',
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: '#353542',
+    borderColor: colors.border,
     borderRadius: 18,
     paddingHorizontal: 18,
     paddingVertical: 16,
-    color: '#FFFFFF',
+    color: colors.text,
     fontSize: 16,
   },
   errorText: {
-    color: '#FCA5A5',
+    color: colors.danger,
     fontSize: 14,
     lineHeight: 20,
   },
   primaryButton: {
-    backgroundColor: '#A7F3D0',
+    backgroundColor: colors.primary,
     borderRadius: 18,
     paddingVertical: 18,
     alignItems: 'center',
     marginTop: 6,
   },
+  disabledButton: {
+    opacity: 0.7,
+  },
   primaryButtonText: {
-    color: '#101014',
+    color: colors.background,
     fontSize: 17,
     fontWeight: '900',
   },
   footerText: {
-    color: '#8E8E9A',
+    color: colors.textSoft,
     fontSize: 13,
     lineHeight: 20,
     paddingTop: 32,
