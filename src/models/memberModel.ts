@@ -96,3 +96,18 @@ export async function findActiveMemberByRoomAndUser({
 
   return data as RoomMember;
 }
+
+export async function listActiveMembersByRoom(roomId: string): Promise<RoomMember[]> {
+  const { data, error } = await supabase
+    .from('room_members')
+    .select('id, room_id, user_id, name, role, status, created_at, left_at')
+    .eq('room_id', roomId)
+    .eq('status', 'active')
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    throw new Error(`Não consegui carregar os membros da sala: ${error.message}`);
+  }
+
+  return (data ?? []) as RoomMember[];
+}
