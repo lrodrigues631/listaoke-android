@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, SafeAreaView, StyleSheet, Text, View } from 'react-native';
 
 import { supabase } from './src/lib/supabase';
+import { CreateRoomScreen } from './src/screens/CreateRoomScreen';
 import { HomeScreen } from './src/screens/HomeScreen';
 
 type AuthStatus = 'loading' | 'success' | 'error';
@@ -86,12 +87,13 @@ export default function App() {
 
   if (screen === 'createRoom') {
     return (
-      <SafeAreaView style={styles.centerContainer}>
-        <Text style={styles.placeholderTitle}>Criar sala</Text>
-        <Text style={styles.placeholderText}>Próxima etapa. Aqui vamos criar a sala no Supabase.</Text>
-        <Text style={styles.linkText} onPress={() => setScreen('home')}>
-          Voltar
-        </Text>
+      <SafeAreaView style={styles.appContainer}>
+        <CreateRoomScreen
+          onBack={() => setScreen('home')}
+          onCreateRoom={(roomName, ownerName) => {
+            console.log('Criar sala:', { roomName, ownerName, userId });
+          }}
+        />
       </SafeAreaView>
     );
   }
@@ -100,7 +102,9 @@ export default function App() {
     return (
       <SafeAreaView style={styles.centerContainer}>
         <Text style={styles.placeholderTitle}>Entrar com código</Text>
-        <Text style={styles.placeholderText}>Próxima etapa. Aqui o convidado vai entrar na sala.</Text>
+        <Text style={styles.placeholderText}>
+          Próxima etapa. Aqui o convidado vai entrar na sala.
+        </Text>
         <Text style={styles.linkText} onPress={() => setScreen('home')}>
           Voltar
         </Text>
