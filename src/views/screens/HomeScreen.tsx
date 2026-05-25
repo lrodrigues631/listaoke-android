@@ -1,6 +1,8 @@
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '../../constants/colors';
+import { AppButton } from '../components/ui/AppButton';
+import { ScreenShell } from '../components/ui/ScreenShell';
 
 type HomeScreenProps = {
   userId: string | null;
@@ -11,99 +13,109 @@ type HomeScreenProps = {
 
 export function HomeScreen({ userId, authMessage, onCreateRoom, onJoinRoom }: HomeScreenProps) {
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.badge}>Listaokê Mobile</Text>
+    <ScreenShell scroll={false} contentStyle={styles.container}>
+      <View style={styles.hero}>
+        <View style={styles.brandRow}>
+          <Text style={styles.brand}>Listaokê</Text>
+          <View style={styles.livePill}>
+            <Text style={styles.livePillText}>ao vivo</Text>
+          </View>
+        </View>
 
-        <Text style={styles.title}>Karaokê sem guerra civil na fila.</Text>
-
-        <Text style={styles.subtitle}>
-          Crie uma sala, compartilhe o código e deixe todo mundo acompanhar quem canta agora,
-          quem está na fila e quem está só enrolando.
-        </Text>
+        <Text style={styles.title}>Fila de karaokê sem confusão.</Text>
+        <Text style={styles.subtitle}>Crie uma sala, chame a turma e deixe o palco girar.</Text>
       </View>
 
       <View style={styles.actions}>
-        <TouchableOpacity style={styles.primaryButton} onPress={onCreateRoom}>
-          <Text style={styles.primaryButtonText}>Criar sala</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.secondaryButton} onPress={onJoinRoom}>
-          <Text style={styles.secondaryButtonText}>Entrar com código</Text>
-        </TouchableOpacity>
+        <AppButton title="Criar sala" onPress={onCreateRoom} />
+        <AppButton title="Entrar com código" variant="secondary" onPress={onJoinRoom} />
       </View>
 
-      <View style={styles.footer}>
-        <Text style={styles.footerText}>
+      <View style={styles.statusBox}>
+        <View style={[styles.statusDot, userId ? styles.statusDotOn : styles.statusDotOff]} />
+        <Text style={styles.statusText}>
           {userId ? authMessage : 'Conectando usuário anônimo...'}
         </Text>
       </View>
-    </View>
+    </ScreenShell>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: colors.background,
-    padding: 24,
     justifyContent: 'space-between',
   },
-  header: {
+  hero: {
     gap: 16,
-    paddingTop: 64,
+    paddingTop: 28,
   },
-  badge: {
+  brandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  brand: {
     color: colors.primary,
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: 15,
+    fontWeight: '900',
     letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  livePill: {
+    backgroundColor: colors.primaryMuted,
+    borderColor: '#2D6B55',
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  livePillText: {
+    color: colors.primary,
+    fontSize: 12,
+    fontWeight: '900',
     textTransform: 'uppercase',
   },
   title: {
     color: colors.text,
-    fontSize: 38,
+    fontSize: 40,
     lineHeight: 44,
     fontWeight: '900',
   },
   subtitle: {
     color: colors.textMuted,
     fontSize: 17,
-    lineHeight: 26,
+    lineHeight: 25,
   },
   actions: {
-    gap: 14,
+    gap: 12,
   },
-  primaryButton: {
-    backgroundColor: colors.primary,
-    borderRadius: 18,
-    paddingVertical: 18,
-    alignItems: 'center',
-  },
-  primaryButtonText: {
-    color: colors.background,
-    fontSize: 17,
-    fontWeight: '900',
-  },
-  secondaryButton: {
-    backgroundColor: colors.surfaceLight,
-    borderRadius: 18,
-    paddingVertical: 18,
-    alignItems: 'center',
+  statusBox: {
+    backgroundColor: colors.surface,
+    borderColor: colors.borderSoft,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 9,
   },
-  secondaryButtonText: {
-    color: colors.text,
-    fontSize: 17,
-    fontWeight: '900',
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 999,
   },
-  footer: {
-    paddingBottom: 16,
+  statusDotOn: {
+    backgroundColor: colors.primary,
   },
-  footerText: {
+  statusDotOff: {
+    backgroundColor: colors.textSoft,
+  },
+  statusText: {
     color: colors.textSoft,
     fontSize: 13,
-    lineHeight: 20,
+    lineHeight: 18,
+    flex: 1,
   },
 });

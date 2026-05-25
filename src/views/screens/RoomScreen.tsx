@@ -1,15 +1,16 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { Alert, ScrollView, Text, View } from 'react-native';
 
-import { colors } from '../../constants/colors';
+import { AdminCard } from '../components/room/AdminCard';
+import { FinalSummaryCard } from '../components/room/FinalSummaryCard';
+import { HistoryPreviewCard } from '../components/room/HistoryPreviewCard';
+import { MembersCard } from '../components/room/MembersCard';
+import { MyParticipationCard } from '../components/room/MyParticipationCard';
+import { QueueCard } from '../components/room/QueueCard';
+import { RoomHeader } from '../components/room/RoomHeader';
+import { StageCard } from '../components/room/StageCard';
+import { roomStyles as styles } from '../components/room/roomStyles';
+import { AppButton } from '../components/ui/AppButton';
 import {
   formatRoomEventMessage,
   loadRoomEvents,
@@ -86,6 +87,7 @@ export function RoomScreen({ room, onBackHome }: RoomScreenProps) {
   const [isClosingRoom, setIsClosingRoom] = useState(false);
   const [isChangingMember, setIsChangingMember] = useState(false);
   const [isCopyingInvite, setIsCopyingInvite] = useState(false);
+  const [isHistoryExpanded, setIsHistoryExpanded] = useState(false);
 
   const [roomError, setRoomError] = useState<string | null>(null);
   const [membersError, setMembersError] = useState<string | null>(null);
@@ -253,18 +255,17 @@ export function RoomScreen({ room, onBackHome }: RoomScreenProps) {
 
   const isMeOnStage = myQueueItem?.status === 'on_stage';
   const isMeWaiting = myQueueItem?.status === 'waiting';
+  const myWaitingQueueIndex = waitingQueue.findIndex((item) => item.member_id === room.memberId);
+  const myQueuePosition = myWaitingQueueIndex >= 0 ? myWaitingQueueIndex + 1 : null;
   const canMoveMyTurnDown =
     isMeWaiting &&
     waitingQueue.length > 1 &&
     waitingQueue[waitingQueue.length - 1]?.member_id !== room.memberId;
 
   const currentOnStageMember = currentOnStage ? membersById[currentOnStage.member_id] : null;
-  const roleLabel = isOwner ? 'Dono' : 'Convidado';
 
   const transferableMembers = members.filter((member) => member.id !== room.memberId);
   const removableMembers = members.filter((member) => member.id !== room.memberId);
-
-  const topSinger = summary.ranking[0] ?? null;
 
   async function runQueueAction(action: () => Promise<void>) {
     if (isRoomClosed) {
@@ -473,973 +474,129 @@ export function RoomScreen({ room, onBackHome }: RoomScreenProps) {
     );
   }
 
+  const historyCard = (
+    <HistoryPreviewCard
+      events={events}
+      isLoadingEvents={isLoadingEvents}
+      eventsError={eventsError}
+      isExpanded={isHistoryExpanded}
+      onToggleExpanded={() => setIsHistoryExpanded((currentValue) => !currentValue)}
+      formatMessage={formatRoomEventMessage}
+      formatTime={formatEventTime}
+    />
+  );
+
+  const membersCard = (
+    <MembersCard
+      members={members}
+      currentMemberId={room.memberId}
+      isLoadingMembers={isLoadingMembers}
+      membersError={membersError}
+      isOwner={isOwner}
+      isRoomClosed={isRoomClosed}
+      isChangingMember={isChangingMember}
+      onTransferOwnership={confirmTransferOwnership}
+      onRemoveMember={confirmRemoveMember}
+    />
+  );
+
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.badge}>{isRoomClosed ? 'Sala encerrada' : 'Sala ativa'}</Text>
-        <Text style={styles.title}>{room.roomName}</Text>
-        <Text style={styles.subtitle}>Código da sala: {room.roomCode}</Text>
-      </View>
-
-      <View style={styles.inviteCard}>
-        <Text style={styles.cardLabel}>Convite</Text>
-        <Text style={styles.inviteCode}>{room.roomCode}</Text>
-        <Text style={styles.inviteText}>
-          Compartilhe esse código para a turma entrar na sala.
-        </Text>
-
-        <View style={styles.buttonGroup}>
-          <TouchableOpacity
-            disabled={isCopyingInvite}
-            style={[styles.primaryButton, isCopyingInvite && styles.disabledButton]}
-            onPress={handleCopyInvite}
-          >
-            {isCopyingInvite ? (
-              <ActivityIndicator />
-            ) : (
-              <Text style={styles.primaryButtonText}>Copiar convite</Text>
-            )}
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            disabled={isCopyingInvite}
-            style={[styles.secondaryActionButton, isCopyingInvite && styles.disabledButton]}
-            onPress={handleCopyCode}
-          >
-            {isCopyingInvite ? (
-              <ActivityIndicator />
-            ) : (
-              <Text style={styles.secondaryActionButtonText}>Copiar só o código</Text>
-            )}
-          </TouchableOpacity>
-        </View>
-      </View>
+      <RoomHeader
+        roomName={room.roomName}
+        roomCode={room.roomCode}
+        isClosed={isRoomClosed}
+        isCopyingCode={isCopyingInvite}
+        onCopyCode={handleCopyCode}
+      />
 
       {roomError && <Text style={styles.errorText}>{roomError}</Text>}
 
-      {isRoomClosed && (
-        <View style={styles.closedBanner}>
-          <Text style={styles.closedTitle}>Essa sala já foi encerrada.</Text>
-          <Text style={styles.closedText}>O karaokê dessa turma acabou por hoje.</Text>
-        </View>
-      )}
+      {isRoomClosed ? (
+        <>
+          <FinalSummaryCard
+            summary={summary}
+            isLoadingSummary={isLoadingSummary}
+            summaryError={summaryError}
+          />
 
-      {isRoomClosed && (
-        <View style={styles.summaryCard}>
-          <Text style={styles.sectionTitle}>Resumo da noite</Text>
-
-          {isLoadingSummary ? (
-            <View style={styles.loadingRow}>
-              <ActivityIndicator />
-              <Text style={styles.loadingText}>Montando o placar final...</Text>
-            </View>
-          ) : summaryError ? (
-            <Text style={styles.errorText}>{summaryError}</Text>
-          ) : (
-            <>
-              <View style={styles.summaryGrid}>
-                <View style={styles.summaryBox}>
-                  <Text style={styles.summaryNumber}>{summary.total_performances}</Text>
-                  <Text style={styles.summaryLabel}>músicas cantadas</Text>
-                </View>
-
-                <View style={styles.summaryBox}>
-                  <Text style={styles.summaryNumber}>{summary.total_participants}</Text>
-                  <Text style={styles.summaryLabel}>participantes</Text>
-                </View>
-
-                <View style={styles.summaryBox}>
-                  <Text style={styles.summaryNumber}>{summary.total_skips}</Text>
-                  <Text style={styles.summaryLabel}>pulos de vez</Text>
-                </View>
-
-                <View style={styles.summaryBox}>
-                  <Text style={styles.summaryNumber}>{summary.total_queue_exits}</Text>
-                  <Text style={styles.summaryLabel}>saídas da fila</Text>
-                </View>
-              </View>
-
-              {topSinger ? (
-                <View style={styles.highlightBox}>
-                  <Text style={styles.highlightLabel}>Quem mais cantou</Text>
-                  <Text style={styles.highlightName}>
-                    {topSinger.name} com {topSinger.performances}{' '}
-                    {topSinger.performances === 1 ? 'música' : 'músicas'}
-                  </Text>
-                </View>
-              ) : (
-                <Text style={styles.emptyText}>
-                  Ninguém concluiu uma música. Foi ensaio técnico, aparentemente.
-                </Text>
-              )}
-
-              <View style={styles.rankingBox}>
-                <Text style={styles.cardLabel}>Ranking</Text>
-
-                {summary.ranking.length === 0 ? (
-                  <Text style={styles.emptyText}>Sem ranking para mostrar.</Text>
-                ) : (
-                  summary.ranking.map((item, index) => (
-                    <View key={`${item.member_id}-${index}`} style={styles.rankingItem}>
-                      <Text style={styles.rankingPosition}>{index + 1}</Text>
-
-                      <View style={styles.rankingInfo}>
-                        <Text style={styles.memberName}>{item.name}</Text>
-                        <Text style={styles.memberRole}>
-                          {item.performances}{' '}
-                          {item.performances === 1 ? 'música cantada' : 'músicas cantadas'}
-                        </Text>
-                      </View>
-                    </View>
-                  ))
-                )}
-              </View>
-            </>
-          )}
-        </View>
-      )}
-
-      {wasRemovedFromRoom && (
-        <View style={styles.closedBanner}>
-          <Text style={styles.closedTitle}>Você não está mais nesta sala.</Text>
-          <Text style={styles.closedText}>
-            O dono removeu sua participação. Para voltar, só entrando de novo se a sala ainda estiver aberta.
-          </Text>
-        </View>
-      )}
-
-      <View style={styles.card}>
-        <Text style={styles.cardLabel}>Você</Text>
-        <Text style={styles.cardValue}>{room.memberName}</Text>
-
-        <Text style={styles.cardLabel}>Seu cargo</Text>
-        <Text style={styles.cardValue}>{roleLabel}</Text>
-      </View>
-
-      <View style={styles.stageCard}>
-        <Text style={styles.sectionTitle}>Cantando agora</Text>
-
-        {isLoadingRoom || isLoadingQueue ? (
-          <View style={styles.loadingRow}>
-            <ActivityIndicator />
-            <Text style={styles.loadingText}>Atualizando o palco...</Text>
-          </View>
-        ) : currentOnStage && !isRoomClosed ? (
-          <>
-            <Text style={styles.stageName}>
-              {currentOnStageMember?.name ?? 'Alguém misterioso'}
-            </Text>
-
-            {isMeOnStage ? (
-              <Text style={styles.stageHint}>
-                Você está no palco. Concluir ou pular manda você para o fim da fila.
+          {historyCard}
+          {membersCard}
+        </>
+      ) : (
+        <>
+          {wasRemovedFromRoom && (
+            <View style={styles.closedBanner}>
+              <Text style={styles.closedTitle}>Você não está mais nesta sala.</Text>
+              <Text style={styles.closedText}>
+                O dono removeu sua participação. Para voltar, só entrando de novo se a sala ainda
+                estiver aberta.
               </Text>
-            ) : (
-              <Text style={styles.stageHint}>A vez está rolando. Respeita o show.</Text>
-            )}
-
-            {isMeOnStage && !wasRemovedFromRoom && (
-              <View style={styles.buttonGroup}>
-                <TouchableOpacity
-                  disabled={isChangingQueue || isRoomClosed}
-                  style={[
-                    styles.primaryButton,
-                    (isChangingQueue || isRoomClosed) && styles.disabledButton,
-                  ]}
-                  onPress={() => runQueueAction(() => finishMyTurn(room.roomId, room.memberId))}
-                >
-                  {isChangingQueue ? (
-                    <ActivityIndicator />
-                  ) : (
-                    <Text style={styles.primaryButtonText}>Concluir e voltar ao fim</Text>
-                  )}
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  disabled={isChangingQueue || isRoomClosed}
-                  style={[
-                    styles.warningButton,
-                    (isChangingQueue || isRoomClosed) && styles.disabledButton,
-                  ]}
-                  onPress={() => runQueueAction(() => skipMyTurn(room.roomId, room.memberId))}
-                >
-                  {isChangingQueue ? (
-                    <ActivityIndicator />
-                  ) : (
-                    <Text style={styles.warningButtonText}>Pular e voltar ao fim</Text>
-                  )}
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  disabled={isChangingQueue || isRoomClosed}
-                  style={[
-                    styles.dangerButton,
-                    (isChangingQueue || isRoomClosed) && styles.disabledButton,
-                  ]}
-                  onPress={confirmStopSinging}
-                >
-                  {isChangingQueue ? (
-                    <ActivityIndicator />
-                  ) : (
-                    <Text style={styles.dangerButtonText}>Parar de cantar</Text>
-                  )}
-                </TouchableOpacity>
-              </View>
-            )}
-
-            {isOwner && !isMeOnStage && (
-              <TouchableOpacity
-                disabled={isChangingQueue || isRoomClosed}
-                style={[
-                  styles.dangerButton,
-                  (isChangingQueue || isRoomClosed) && styles.disabledButton,
-                ]}
-                onPress={() => confirmOwnerRemoveQueueItem(currentOnStage)}
-              >
-                {isChangingQueue ? (
-                  <ActivityIndicator />
-                ) : (
-                  <Text style={styles.dangerButtonText}>Remover do palco</Text>
-                )}
-              </TouchableOpacity>
-            )}
-          </>
-        ) : (
-          <Text style={styles.emptyText}>
-            {isRoomClosed
-              ? 'A sala foi encerrada. O palco fechou.'
-              : 'Ninguém no palco agora. Quando alguém entrar na fila, o app chama sozinho.'}
-          </Text>
-        )}
-      </View>
-
-      <View style={styles.card}>
-        <Text style={styles.sectionTitle}>Minha participação</Text>
-
-        {isRoomClosed ? (
-          <Text style={styles.participationText}>
-            A sala foi encerrada. Não dá mais para entrar, sair ou mexer na fila.
-          </Text>
-        ) : wasRemovedFromRoom ? (
-          <Text style={styles.participationText}>
-            Você foi removido desta sala. Suas ações aqui estão bloqueadas.
-          </Text>
-        ) : isMeOnStage ? (
-          <>
-            <Text style={styles.participationText}>
-              Você está cantando agora. Depois da sua vez, pode voltar para o fim da fila ou parar.
-            </Text>
-
-            <View style={styles.buttonGroup}>
-              <TouchableOpacity
-                disabled={isChangingQueue}
-                style={[styles.primaryButton, isChangingQueue && styles.disabledButton]}
-                onPress={() => runQueueAction(() => finishMyTurn(room.roomId, room.memberId))}
-              >
-                {isChangingQueue ? (
-                  <ActivityIndicator />
-                ) : (
-                  <Text style={styles.primaryButtonText}>Concluir e voltar ao fim</Text>
-                )}
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                disabled={isChangingQueue}
-                style={[styles.warningButton, isChangingQueue && styles.disabledButton]}
-                onPress={() => runQueueAction(() => skipMyTurn(room.roomId, room.memberId))}
-              >
-                {isChangingQueue ? (
-                  <ActivityIndicator />
-                ) : (
-                  <Text style={styles.warningButtonText}>Pular e voltar ao fim</Text>
-                )}
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                disabled={isChangingQueue}
-                style={[styles.dangerButton, isChangingQueue && styles.disabledButton]}
-                onPress={confirmStopSinging}
-              >
-                {isChangingQueue ? (
-                  <ActivityIndicator />
-                ) : (
-                  <Text style={styles.dangerButtonText}>Parar de cantar</Text>
-                )}
-              </TouchableOpacity>
             </View>
-          </>
-        ) : isMeWaiting ? (
-          <>
-            <Text style={styles.participationText}>
-              Você está esperando sua vez. Pode adiar ou sair da fila.
-            </Text>
-
-            <View style={styles.buttonGroup}>
-              <TouchableOpacity
-                disabled={isChangingQueue || !canMoveMyTurnDown}
-                style={[
-                  styles.secondaryActionButton,
-                  (isChangingQueue || !canMoveMyTurnDown) && styles.disabledButton,
-                ]}
-                onPress={() => runQueueAction(() => moveMyTurnDown(room.roomId, room.memberId))}
-              >
-                {isChangingQueue ? (
-                  <ActivityIndicator />
-                ) : (
-                  <Text style={styles.secondaryActionButtonText}>Adiar minha vez</Text>
-                )}
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                disabled={isChangingQueue}
-                style={[styles.dangerButton, isChangingQueue && styles.disabledButton]}
-                onPress={() => runQueueAction(() => leaveQueue(room.roomId, room.memberId))}
-              >
-                {isChangingQueue ? (
-                  <ActivityIndicator />
-                ) : (
-                  <Text style={styles.dangerButtonText}>Sair da fila</Text>
-                )}
-              </TouchableOpacity>
-            </View>
-          </>
-        ) : (
-          <>
-            <Text style={styles.participationText}>
-              Você ainda não entrou na fila. Quando entrar, se o palco estiver vazio, sua vez começa na hora.
-            </Text>
-
-            <TouchableOpacity
-              disabled={isChangingQueue}
-              style={[styles.primaryButton, isChangingQueue && styles.disabledButton]}
-              onPress={() => runQueueAction(() => joinQueue(room.roomId, room.memberId))}
-            >
-              {isChangingQueue ? (
-                <ActivityIndicator />
-              ) : (
-                <Text style={styles.primaryButtonText}>Entrar na fila</Text>
-              )}
-            </TouchableOpacity>
-          </>
-        )}
-      </View>
-
-      <View style={styles.card}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Fila de espera</Text>
-          <Text style={styles.counter}>{waitingQueue.length}</Text>
-        </View>
-
-        {isLoadingQueue && (
-          <View style={styles.loadingRow}>
-            <ActivityIndicator />
-            <Text style={styles.loadingText}>Carregando a fila...</Text>
-          </View>
-        )}
-
-        {queueError && <Text style={styles.errorText}>{queueError}</Text>}
-
-        {!isLoadingQueue && !queueError && waitingQueue.length === 0 && (
-          <Text style={styles.emptyText}>
-            {isRoomClosed
-              ? 'A fila foi encerrada junto com a sala.'
-              : 'Ninguém esperando. Quem está no palco pode continuar girando ou parar de cantar.'}
-          </Text>
-        )}
-
-        {!isLoadingQueue &&
-          !queueError &&
-          !isRoomClosed &&
-          waitingQueue.map((item, index) => {
-            const member = membersById[item.member_id];
-            const isThisMe = item.member_id === room.memberId;
-
-            return (
-              <View key={item.id} style={styles.queueItem}>
-                <Text style={styles.queuePosition}>{index + 1}</Text>
-
-                <View style={styles.queueInfo}>
-                  <Text style={styles.memberName}>{member?.name ?? 'Participante'}</Text>
-                  <Text style={styles.memberRole}>
-                    {member?.role === 'owner' ? 'Dono da sala' : 'Convidado'}
-                  </Text>
-                </View>
-
-                {isThisMe && <Text style={styles.youBadge}>Você</Text>}
-
-                {isOwner && (
-                  <TouchableOpacity
-                    disabled={isChangingQueue || isRoomClosed}
-                    style={[
-                      styles.smallDangerButton,
-                      (isChangingQueue || isRoomClosed) && styles.disabledButton,
-                    ]}
-                    onPress={() => confirmOwnerRemoveQueueItem(item)}
-                  >
-                    <Text style={styles.smallDangerButtonText}>Remover</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            );
-          })}
-      </View>
-
-      <View style={styles.card}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Membros</Text>
-          <Text style={styles.counter}>{members.length}</Text>
-        </View>
-
-        {isLoadingMembers && (
-          <View style={styles.loadingRow}>
-            <ActivityIndicator />
-            <Text style={styles.loadingText}>Carregando a turma...</Text>
-          </View>
-        )}
-
-        {membersError && <Text style={styles.errorText}>{membersError}</Text>}
-
-        {!isLoadingMembers && !membersError && members.length === 0 && (
-          <Text style={styles.emptyText}>Ninguém apareceu ainda. Nem o tio do “só uma música”.</Text>
-        )}
-
-        {!isLoadingMembers &&
-          !membersError &&
-          members.map((member) => {
-            const isThisMe = member.id === room.memberId;
-            const canManageThisMember = isOwner && !isThisMe && !isRoomClosed;
-
-            return (
-              <View key={member.id} style={styles.memberItem}>
-                <View style={styles.memberInfo}>
-                  <Text style={styles.memberName}>{member.name}</Text>
-                  <Text style={styles.memberRole}>
-                    {member.role === 'owner' ? 'Dono da sala' : 'Convidado'}
-                  </Text>
-                </View>
-
-                <View style={styles.memberActions}>
-                  {isThisMe && <Text style={styles.youBadge}>Você</Text>}
-
-                  {canManageThisMember && (
-                    <>
-                      <TouchableOpacity
-                        disabled={isChangingMember}
-                        style={[
-                          styles.smallPrimaryButton,
-                          isChangingMember && styles.disabledButton,
-                        ]}
-                        onPress={() => confirmTransferOwnership(member)}
-                      >
-                        <Text style={styles.smallPrimaryButtonText}>Virar dono</Text>
-                      </TouchableOpacity>
-
-                      <TouchableOpacity
-                        disabled={isChangingMember}
-                        style={[
-                          styles.smallDangerButton,
-                          isChangingMember && styles.disabledButton,
-                        ]}
-                        onPress={() => confirmRemoveMember(member)}
-                      >
-                        <Text style={styles.smallDangerButtonText}>Remover</Text>
-                      </TouchableOpacity>
-                    </>
-                  )}
-                </View>
-              </View>
-            );
-          })}
-      </View>
-
-      <View style={styles.card}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Histórico</Text>
-          <Text style={styles.counter}>{events.length}</Text>
-        </View>
-
-        {isLoadingEvents && (
-          <View style={styles.loadingRow}>
-            <ActivityIndicator />
-            <Text style={styles.loadingText}>Carregando os acontecimentos...</Text>
-          </View>
-        )}
-
-        {eventsError && <Text style={styles.errorText}>{eventsError}</Text>}
-
-        {!isLoadingEvents && !eventsError && events.length === 0 && (
-          <Text style={styles.emptyText}>Nada aconteceu ainda. Silêncio constrangedor.</Text>
-        )}
-
-        {!isLoadingEvents &&
-          !eventsError &&
-          events.map((event) => (
-            <View key={event.id} style={styles.eventItem}>
-              <Text style={styles.eventTime}>{formatEventTime(event.created_at)}</Text>
-              <Text style={styles.eventText}>{formatRoomEventMessage(event)}</Text>
-            </View>
-          ))}
-      </View>
-
-      {isOwner && !isRoomClosed && (
-        <View style={styles.adminCard}>
-          <Text style={styles.sectionTitle}>Administração</Text>
-          <Text style={styles.adminText}>
-            Você pode transferir a administração pela lista de membros ou encerrar a sala para todo mundo.
-          </Text>
-
-          {transferableMembers.length === 0 && (
-            <Text style={styles.emptyText}>
-              Só você está na sala. Para transferir, alguém precisa entrar primeiro.
-            </Text>
           )}
 
-          {removableMembers.length === 0 && (
-            <Text style={styles.emptyText}>
-              Não há convidados para remover agora.
-            </Text>
+          <StageCard
+            currentOnStage={currentOnStage}
+            currentOnStageMember={currentOnStageMember}
+            isLoadingRoom={isLoadingRoom}
+            isLoadingQueue={isLoadingQueue}
+            isRoomClosed={isRoomClosed}
+            isMeOnStage={isMeOnStage}
+            isOwner={isOwner}
+            isChangingQueue={isChangingQueue}
+            wasRemovedFromRoom={wasRemovedFromRoom}
+            onFinishTurn={() => runQueueAction(() => finishMyTurn(room.roomId, room.memberId))}
+            onSkipTurn={() => runQueueAction(() => skipMyTurn(room.roomId, room.memberId))}
+            onStopSinging={confirmStopSinging}
+            onOwnerRemoveFromStage={confirmOwnerRemoveQueueItem}
+          />
+
+          <MyParticipationCard
+            isRoomClosed={isRoomClosed}
+            wasRemovedFromRoom={wasRemovedFromRoom}
+            isMeOnStage={isMeOnStage}
+            isMeWaiting={isMeWaiting}
+            queuePosition={myQueuePosition}
+            isChangingQueue={isChangingQueue}
+            canMoveMyTurnDown={canMoveMyTurnDown}
+            onFinishTurn={() => runQueueAction(() => finishMyTurn(room.roomId, room.memberId))}
+            onSkipTurn={() => runQueueAction(() => skipMyTurn(room.roomId, room.memberId))}
+            onStopSinging={confirmStopSinging}
+            onMoveTurnDown={() => runQueueAction(() => moveMyTurnDown(room.roomId, room.memberId))}
+            onLeaveQueue={() => runQueueAction(() => leaveQueue(room.roomId, room.memberId))}
+            onJoinQueue={() => runQueueAction(() => joinQueue(room.roomId, room.memberId))}
+          />
+
+          {isOwner && (
+            <AdminCard
+              transferableCount={transferableMembers.length}
+              removableCount={removableMembers.length}
+              isCopyingInvite={isCopyingInvite}
+              isClosingRoom={isClosingRoom}
+              onCopyInvite={handleCopyInvite}
+              onCloseRoom={confirmCloseRoom}
+            />
           )}
 
-          <TouchableOpacity
-            disabled={isClosingRoom}
-            style={[styles.dangerButton, isClosingRoom && styles.disabledButton]}
-            onPress={confirmCloseRoom}
-          >
-            {isClosingRoom ? (
-              <ActivityIndicator />
-            ) : (
-              <Text style={styles.dangerButtonText}>Fechar sala</Text>
-            )}
-          </TouchableOpacity>
-        </View>
+          <QueueCard
+            waitingQueue={waitingQueue}
+            membersById={membersById}
+            currentMemberId={room.memberId}
+            isLoadingQueue={isLoadingQueue}
+            queueError={queueError}
+            isRoomClosed={isRoomClosed}
+            isOwner={isOwner}
+            isChangingQueue={isChangingQueue}
+            onOwnerRemoveQueueItem={confirmOwnerRemoveQueueItem}
+          />
+
+          {membersCard}
+
+          {historyCard}
+        </>
       )}
 
-      <TouchableOpacity style={styles.secondaryButton} onPress={onBackHome}>
-        <Text style={styles.secondaryButtonText}>Voltar para início</Text>
-      </TouchableOpacity>
+      <AppButton title="Voltar para início" variant="secondary" onPress={onBackHome} />
     </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flexGrow: 1,
-    backgroundColor: colors.background,
-    padding: 24,
-    gap: 18,
-  },
-  header: {
-    gap: 12,
-    paddingTop: 56,
-  },
-  badge: {
-    color: colors.primary,
-    fontSize: 14,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
-  },
-  title: {
-    color: colors.text,
-    fontSize: 34,
-    lineHeight: 40,
-    fontWeight: '900',
-  },
-  subtitle: {
-    color: colors.textMuted,
-    fontSize: 16,
-    lineHeight: 24,
-  },
-  inviteCard: {
-    backgroundColor: '#13231D',
-    borderRadius: 22,
-    padding: 20,
-    gap: 12,
-    borderWidth: 1,
-    borderColor: '#285343',
-  },
-  inviteCode: {
-    color: colors.text,
-    fontSize: 42,
-    lineHeight: 48,
-    letterSpacing: 6,
-    fontWeight: '900',
-  },
-  inviteText: {
-    color: colors.textMuted,
-    fontSize: 15,
-    lineHeight: 22,
-  },
-  closedBanner: {
-    backgroundColor: '#3A1F25',
-    borderRadius: 22,
-    padding: 20,
-    gap: 6,
-    borderWidth: 1,
-    borderColor: '#7F2D3A',
-  },
-  closedTitle: {
-    color: colors.danger,
-    fontSize: 20,
-    fontWeight: '900',
-  },
-  closedText: {
-    color: colors.textMuted,
-    fontSize: 15,
-    lineHeight: 22,
-  },
-  summaryCard: {
-    backgroundColor: '#1C2418',
-    borderRadius: 22,
-    padding: 20,
-    gap: 14,
-    borderWidth: 1,
-    borderColor: '#445C33',
-  },
-  summaryGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-  },
-  summaryBox: {
-    flexGrow: 1,
-    flexBasis: '45%',
-    backgroundColor: '#242D1D',
-    borderRadius: 18,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: '#445C33',
-  },
-  summaryNumber: {
-    color: colors.primary,
-    fontSize: 30,
-    fontWeight: '900',
-  },
-  summaryLabel: {
-    color: colors.textMuted,
-    fontSize: 13,
-    lineHeight: 18,
-    marginTop: 2,
-  },
-  highlightBox: {
-    backgroundColor: '#13231D',
-    borderRadius: 18,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#285343',
-  },
-  highlightLabel: {
-    color: colors.textSoft,
-    fontSize: 13,
-    fontWeight: '800',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  highlightName: {
-    color: colors.text,
-    fontSize: 20,
-    fontWeight: '900',
-    marginTop: 4,
-  },
-  rankingBox: {
-    gap: 10,
-  },
-  rankingItem: {
-    backgroundColor: colors.surfaceLight,
-    borderRadius: 16,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: colors.border,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  rankingPosition: {
-    width: 34,
-    height: 34,
-    borderRadius: 999,
-    backgroundColor: colors.primary,
-    color: colors.background,
-    textAlign: 'center',
-    textAlignVertical: 'center',
-    fontSize: 16,
-    fontWeight: '900',
-  },
-  rankingInfo: {
-    flex: 1,
-  },
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: 22,
-    padding: 20,
-    gap: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  stageCard: {
-    backgroundColor: '#13231D',
-    borderRadius: 22,
-    padding: 20,
-    gap: 12,
-    borderWidth: 1,
-    borderColor: '#285343',
-  },
-  adminCard: {
-    backgroundColor: '#1F1618',
-    borderRadius: 22,
-    padding: 20,
-    gap: 12,
-    borderWidth: 1,
-    borderColor: '#5D2732',
-  },
-  adminText: {
-    color: colors.textMuted,
-    fontSize: 15,
-    lineHeight: 22,
-  },
-  cardLabel: {
-    color: colors.textSoft,
-    fontSize: 13,
-    fontWeight: '800',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  cardValue: {
-    color: colors.text,
-    fontSize: 19,
-    fontWeight: '800',
-    marginBottom: 4,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  sectionTitle: {
-    color: colors.text,
-    fontSize: 22,
-    fontWeight: '900',
-  },
-  counter: {
-    minWidth: 32,
-    textAlign: 'center',
-    color: colors.background,
-    backgroundColor: colors.primary,
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    fontSize: 14,
-    fontWeight: '900',
-  },
-  stageName: {
-    color: colors.text,
-    fontSize: 30,
-    lineHeight: 36,
-    fontWeight: '900',
-  },
-  stageHint: {
-    color: colors.primary,
-    fontSize: 15,
-    lineHeight: 22,
-    fontWeight: '800',
-  },
-  participationText: {
-    color: colors.textMuted,
-    fontSize: 15,
-    lineHeight: 22,
-  },
-  buttonGroup: {
-    gap: 10,
-  },
-  loadingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  loadingText: {
-    color: colors.textMuted,
-    fontSize: 14,
-  },
-  errorText: {
-    color: colors.danger,
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  memberItem: {
-    backgroundColor: colors.surfaceLight,
-    borderRadius: 16,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: colors.border,
-    gap: 12,
-  },
-  memberInfo: {
-    gap: 3,
-  },
-  memberActions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    gap: 8,
-  },
-  queueItem: {
-    backgroundColor: colors.surfaceLight,
-    borderRadius: 16,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: colors.border,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  queuePosition: {
-    width: 34,
-    height: 34,
-    borderRadius: 999,
-    backgroundColor: colors.primary,
-    color: colors.background,
-    textAlign: 'center',
-    textAlignVertical: 'center',
-    fontSize: 16,
-    fontWeight: '900',
-  },
-  queueInfo: {
-    flex: 1,
-  },
-  memberName: {
-    color: colors.text,
-    fontSize: 16,
-    fontWeight: '900',
-  },
-  memberRole: {
-    color: colors.textSoft,
-    fontSize: 13,
-    marginTop: 3,
-  },
-  youBadge: {
-    color: colors.background,
-    backgroundColor: colors.primary,
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    fontSize: 12,
-    fontWeight: '900',
-  },
-  emptyText: {
-    color: colors.textMuted,
-    fontSize: 15,
-    lineHeight: 22,
-  },
-  eventItem: {
-    backgroundColor: colors.surfaceLight,
-    borderRadius: 16,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: colors.border,
-    gap: 4,
-  },
-  eventTime: {
-    color: colors.textSoft,
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  eventText: {
-    color: colors.textMuted,
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  primaryButton: {
-    backgroundColor: colors.primary,
-    borderRadius: 18,
-    paddingVertical: 16,
-    alignItems: 'center',
-    marginTop: 4,
-  },
-  primaryButtonText: {
-    color: colors.background,
-    fontSize: 16,
-    fontWeight: '900',
-  },
-  secondaryActionButton: {
-    backgroundColor: colors.surfaceLight,
-    borderColor: colors.border,
-    borderWidth: 1,
-    borderRadius: 18,
-    paddingVertical: 16,
-    alignItems: 'center',
-    marginTop: 4,
-  },
-  secondaryActionButtonText: {
-    color: colors.text,
-    fontSize: 16,
-    fontWeight: '900',
-  },
-  warningButton: {
-    backgroundColor: '#3A321E',
-    borderColor: '#7A6428',
-    borderWidth: 1,
-    borderRadius: 18,
-    paddingVertical: 16,
-    alignItems: 'center',
-    marginTop: 4,
-  },
-  warningButtonText: {
-    color: '#FDE68A',
-    fontSize: 16,
-    fontWeight: '900',
-  },
-  dangerButton: {
-    backgroundColor: '#3A1F25',
-    borderColor: '#7F2D3A',
-    borderWidth: 1,
-    borderRadius: 18,
-    paddingVertical: 16,
-    alignItems: 'center',
-    marginTop: 4,
-  },
-  dangerButtonText: {
-    color: colors.danger,
-    fontSize: 16,
-    fontWeight: '900',
-  },
-  smallPrimaryButton: {
-    backgroundColor: colors.primary,
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 7,
-  },
-  smallPrimaryButtonText: {
-    color: colors.background,
-    fontSize: 12,
-    fontWeight: '900',
-  },
-  smallDangerButton: {
-    backgroundColor: '#3A1F25',
-    borderColor: '#7F2D3A',
-    borderWidth: 1,
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 7,
-  },
-  smallDangerButtonText: {
-    color: colors.danger,
-    fontSize: 12,
-    fontWeight: '900',
-  },
-  disabledButton: {
-    opacity: 0.55,
-  },
-  secondaryButton: {
-    backgroundColor: colors.surfaceLight,
-    borderRadius: 18,
-    paddingVertical: 18,
-    alignItems: 'center',
-    marginTop: 8,
-    marginBottom: 24,
-  },
-  secondaryButtonText: {
-    color: colors.text,
-    fontSize: 16,
-    fontWeight: '900',
-  },
-});
