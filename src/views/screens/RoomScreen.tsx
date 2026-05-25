@@ -17,6 +17,7 @@ import {
   loadRoomSummary,
 } from '../../controllers/eventController';
 import {
+  leaveRoom,
   loadRoomMembers,
   removeRoomMember,
   transferRoomOwnership,
@@ -87,6 +88,7 @@ export function RoomScreen({ room, onBackHome }: RoomScreenProps) {
   const [isClosingRoom, setIsClosingRoom] = useState(false);
   const [isChangingMember, setIsChangingMember] = useState(false);
   const [isCopyingInvite, setIsCopyingInvite] = useState(false);
+  const [isLeavingRoom, setIsLeavingRoom] = useState(false);
   const [isHistoryExpanded, setIsHistoryExpanded] = useState(false);
 
   const [roomError, setRoomError] = useState<string | null>(null);
@@ -433,6 +435,62 @@ export function RoomScreen({ room, onBackHome }: RoomScreenProps) {
     }
   }
 
+  function confirmLeaveRoom() {
+    if (isRoomClosed || wasRemovedFromRoom) {
+      return;
+    }
+
+    if (isOwner) {
+      Alert.alert(
+        'Você é o dono',
+        members.length > 1
+          ? 'Transfira a administração antes de sair.'
+          : 'Você é o único dono da sala. Feche a sala para encerrar.'
+      );
+      return;
+    }
+
+    Alert.alert(
+      'Sair da sala?',
+      'Você sai da sala e também sai da fila ou do palco.',
+      [
+        {
+          text: 'Cancelar',
+          style: 'cancel',
+        },
+        {
+          text: 'Sair da sala',
+          style: 'destructive',
+          onPress: handleLeaveRoom,
+        },
+      ]
+    );
+  }
+
+  async function handleLeaveRoom() {
+    try {
+      setIsLeavingRoom(true);
+      setMembersError(null);
+      setQueueError(null);
+      setEventsError(null);
+
+      await leaveRoom(room.roomId, room.memberId);
+      await fetchMembers();
+      await fetchQueue();
+      await fetchEvents();
+      await fetchSummary();
+
+      onBackHome();
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Erro desconhecido ao sair da sala.';
+
+      Alert.alert('Não consegui sair da sala', errorMessage);
+    } finally {
+      setIsLeavingRoom(false);
+    }
+  }
+
   function confirmTransferOwnership(targetMember: RoomMember) {
     Alert.alert(
       'Transferir administração?',
@@ -596,7 +654,19 @@ export function RoomScreen({ room, onBackHome }: RoomScreenProps) {
         </>
       )}
 
-      <AppButton title="Voltar para início" variant="secondary" onPress={onBackHome} />
+      <View style={styles.footerActions}>
+        <AppButton title="Voltar para início" variant="secondary" onPress={onBackHome} />
+
+        {!isRoomClosed && !wasRemovedFromRoom && (
+          <AppButton
+            title="Sair da sala"
+            variant="dangerOutline"
+            loading={isLeavingRoom}
+            disabled={isLeavingRoom}
+            onPress={confirmLeaveRoom}
+          />
+        )}
+      </View>
     </ScrollView>
   );
 }

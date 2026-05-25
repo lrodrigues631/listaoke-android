@@ -1,4 +1,5 @@
 import {
+  leaveRoomMemberRpc,
   listActiveMembersByRoom,
   removeRoomMemberRpc,
   transferRoomOwnershipRpc,
@@ -42,5 +43,16 @@ export async function removeRoomMember(
     roomId,
     actorMemberId,
     targetMemberId,
+  });
+}
+
+export async function leaveRoom(roomId: string, memberId: string): Promise<void> {
+  if (!roomId || !memberId) {
+    throw new Error('Não consegui identificar sua sala ou seu membro.');
+  }
+
+  await leaveRoomMemberRpc({
+    roomId,
+    memberId,
   });
 }

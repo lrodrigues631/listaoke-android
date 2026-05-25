@@ -438,4 +438,9 @@ export const roomStyles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '800',
   },
+  footerActions: {
+    gap: 10,
+    marginTop: 4,
+    marginBottom: 24,
+  },
 });

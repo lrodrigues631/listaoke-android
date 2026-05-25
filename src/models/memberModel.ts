@@ -30,6 +30,11 @@ type RemoveRoomMemberParams = {
   targetMemberId: string;
 };
 
+type LeaveRoomMemberParams = {
+  roomId: string;
+  memberId: string;
+};
+
 export async function createOwnerMember({
   roomId,
   userId,
@@ -153,5 +158,19 @@ export async function removeRoomMemberRpc({
 
   if (error) {
     throw new Error(`Não consegui remover o membro da sala: ${error.message}`);
+  }
+}
+
+export async function leaveRoomMemberRpc({
+  roomId,
+  memberId,
+}: LeaveRoomMemberParams): Promise<void> {
+  const { error } = await supabase.rpc('leave_room_member', {
+    p_room_id: roomId,
+    p_member_id: memberId,
+  });
+
+  if (error) {
+    throw new Error(`Não consegui sair da sala: ${error.message}`);
   }
 }
