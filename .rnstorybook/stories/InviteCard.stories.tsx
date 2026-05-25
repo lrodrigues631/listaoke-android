@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-native';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
-import { colors } from '../../src/constants/colors';
+import { StorybookScreen } from '../../src/storybook/decorators/StorybookScreen';
 import { InviteCard } from '../../src/views/components/room/InviteCard';
 
 const baseArgs = {
@@ -16,11 +16,9 @@ const meta = {
   component: InviteCard,
   decorators: [
     (Story) => (
-      <ScrollView contentContainerStyle={styles.screen}>
-        <View style={styles.preview}>
-          <Story />
-        </View>
-      </ScrollView>
+      <StorybookScreen>
+        <Story />
+      </StorybookScreen>
     ),
   ],
   args: baseArgs,
@@ -107,14 +105,6 @@ export const AllInviteStates: Story = {
 };
 
 const styles = StyleSheet.create({
-  screen: {
-    flexGrow: 1,
-    backgroundColor: colors.background,
-    padding: 20,
-  },
-  preview: {
-    backgroundColor: colors.background,
-  },
   stack: {
     gap: 16,
   },

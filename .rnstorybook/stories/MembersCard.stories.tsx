@@ -1,71 +1,14 @@
 import type { Meta, StoryObj } from '@storybook/react-native';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
-import { colors } from '../../src/constants/colors';
+import { StorybookScreen } from '../../src/storybook/decorators/StorybookScreen';
+import {
+  ownerAndGuestsMembers,
+  ownerOnlyMembers,
+  ownerWithManualMembers,
+} from '../../src/storybook/mocks/roomMocks';
 import type { RoomMember } from '../../src/types/roomTypes';
 import { MembersCard } from '../../src/views/components/room/MembersCard';
-
-function createMember(overrides: Partial<RoomMember> = {}): RoomMember {
-  return {
-    id: 'member-1',
-    room_id: 'room-1',
-    name: 'Ana',
-    role: 'guest',
-    is_owner: false,
-    is_manual: false,
-    created_at: '2026-05-25T12:00:00.000Z',
-    updated_at: '2026-05-25T12:00:00.000Z',
-    ...overrides,
-  } as RoomMember;
-}
-
-const ownerMember = createMember({
-  id: 'member-owner',
-  name: 'Leandro',
-  role: 'owner',
-  is_owner: true,
-});
-
-const currentGuestMember = createMember({
-  id: 'member-current',
-  name: 'Você',
-  role: 'guest',
-});
-
-const anaMember = createMember({
-  id: 'member-ana',
-  name: 'Ana',
-  role: 'guest',
-});
-
-const brunoMember = createMember({
-  id: 'member-bruno',
-  name: 'Bruno',
-  role: 'guest',
-});
-
-const manualMember = createMember({
-  id: 'member-manual',
-  name: 'Carlos sem app',
-  role: 'guest',
-  is_manual: true,
-});
-
-const ownerOnlyMembers: RoomMember[] = [ownerMember];
-
-const ownerAndGuestsMembers: RoomMember[] = [
-  ownerMember,
-  currentGuestMember,
-  anaMember,
-  brunoMember,
-];
-
-const ownerWithManualMembers: RoomMember[] = [
-  ownerMember,
-  currentGuestMember,
-  anaMember,
-  manualMember,
-];
 
 const mockActions = {
   onTransferOwnership: (member: RoomMember) =>
@@ -91,11 +34,9 @@ const meta = {
   component: MembersCard,
   decorators: [
     (Story) => (
-      <ScrollView contentContainerStyle={styles.screen}>
-        <View style={styles.preview}>
-          <Story />
-        </View>
-      </ScrollView>
+      <StorybookScreen>
+        <Story />
+      </StorybookScreen>
     ),
   ],
   args: baseArgs,
@@ -289,14 +230,6 @@ export const AllMemberStates: Story = {
 };
 
 const styles = StyleSheet.create({
-  screen: {
-    flexGrow: 1,
-    backgroundColor: colors.background,
-    padding: 20,
-  },
-  preview: {
-    backgroundColor: colors.background,
-  },
   stack: {
     gap: 16,
   },

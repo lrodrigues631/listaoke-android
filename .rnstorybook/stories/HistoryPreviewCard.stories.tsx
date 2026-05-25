@@ -1,90 +1,14 @@
 import type { Meta, StoryObj } from '@storybook/react-native';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
-import { colors } from '../../src/constants/colors';
-import type { RoomEvent } from '../../src/types/eventTypes';
+import { StorybookScreen } from '../../src/storybook/decorators/StorybookScreen';
+import {
+  formatMockMessage,
+  formatMockTime,
+  manyEvents,
+  recentEvents,
+} from '../../src/storybook/mocks/roomMocks';
 import { HistoryPreviewCard } from '../../src/views/components/room/HistoryPreviewCard';
-
-type MockRoomEvent = RoomEvent & {
-  message?: string;
-};
-
-function createEvent(overrides: Partial<MockRoomEvent> = {}): RoomEvent {
-  return {
-    id: 'event-1',
-    room_id: 'room-1',
-    event_type: 'mock_event',
-    created_at: '2026-05-25T21:00:00.000Z',
-    message: 'Ana entrou na fila.',
-    payload: {},
-    ...overrides,
-  } as unknown as RoomEvent;
-}
-
-const recentEvents: RoomEvent[] = [
-  createEvent({
-    id: 'event-1',
-    created_at: '2026-05-25T21:00:00.000Z',
-    message: 'Ana entrou na fila.',
-  }),
-  createEvent({
-    id: 'event-2',
-    created_at: '2026-05-25T21:04:00.000Z',
-    message: 'Bruno começou a cantar.',
-  }),
-];
-
-const manyEvents: RoomEvent[] = [
-  createEvent({
-    id: 'event-1',
-    created_at: '2026-05-25T21:00:00.000Z',
-    message: 'Ana entrou na fila.',
-  }),
-  createEvent({
-    id: 'event-2',
-    created_at: '2026-05-25T21:04:00.000Z',
-    message: 'Bruno começou a cantar.',
-  }),
-  createEvent({
-    id: 'event-3',
-    created_at: '2026-05-25T21:08:00.000Z',
-    message: 'Você entrou na fila.',
-  }),
-  createEvent({
-    id: 'event-4',
-    created_at: '2026-05-25T21:12:00.000Z',
-    message: 'Carla pulou a vez.',
-  }),
-  createEvent({
-    id: 'event-5',
-    created_at: '2026-05-25T21:16:00.000Z',
-    message: 'Carlos sem app foi adicionado pelo dono.',
-  }),
-  createEvent({
-    id: 'event-6',
-    created_at: '2026-05-25T21:20:00.000Z',
-    message: 'Ana concluiu a música e voltou para o fim da fila.',
-  }),
-];
-
-function formatMockMessage(event: RoomEvent): string {
-  const mockEvent = event as MockRoomEvent;
-
-  return mockEvent.message ?? 'Evento registrado na sala.';
-}
-
-function formatMockTime(dateValue: string): string {
-  const date = new Date(dateValue);
-
-  if (Number.isNaN(date.getTime())) {
-    return '--:--';
-  }
-
-  return date.toLocaleTimeString('pt-BR', {
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
 
 const baseArgs = {
   events: recentEvents,
@@ -101,11 +25,9 @@ const meta = {
   component: HistoryPreviewCard,
   decorators: [
     (Story) => (
-      <ScrollView contentContainerStyle={styles.screen}>
-        <View style={styles.preview}>
-          <Story />
-        </View>
-      </ScrollView>
+      <StorybookScreen>
+        <Story />
+      </StorybookScreen>
     ),
   ],
   args: baseArgs,
@@ -222,14 +144,6 @@ export const AllHistoryStates: Story = {
 };
 
 const styles = StyleSheet.create({
-  screen: {
-    flexGrow: 1,
-    backgroundColor: colors.background,
-    padding: 20,
-  },
-  preview: {
-    backgroundColor: colors.background,
-  },
   stack: {
     gap: 16,
   },

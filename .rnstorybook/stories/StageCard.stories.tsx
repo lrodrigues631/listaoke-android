@@ -1,40 +1,37 @@
 import type { Meta, StoryObj } from '@storybook/react-native';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
-import { colors } from '../../src/constants/colors';
+import { StorybookScreen } from '../../src/storybook/decorators/StorybookScreen';
+import {
+  anaMember,
+  brunoMember,
+  createQueueItem,
+  currentMember,
+  manualMember,
+} from '../../src/storybook/mocks/roomMocks';
 import type { QueueItem } from '../../src/types/queueTypes';
-import type { RoomMember } from '../../src/types/roomTypes';
 import { StageCard } from '../../src/views/components/room/StageCard';
 
-function createQueueItem(overrides: Partial<QueueItem> = {}): QueueItem {
-  return {
-    id: 'queue-item-1',
-    room_id: 'room-1',
-    member_id: 'member-1',
-    position: 1,
-    status: 'on_stage',
-    created_at: '2026-05-25T12:00:00.000Z',
-    updated_at: '2026-05-25T12:00:00.000Z',
-    ...overrides,
-  } as QueueItem;
-}
+const currentOnStageItem = createQueueItem({
+  id: 'queue-ana-stage',
+  member_id: 'member-ana',
+  status: 'on_stage',
+  position: 0,
+});
 
-function createMember(overrides: Partial<RoomMember> = {}): RoomMember {
-  return {
-    id: 'member-1',
-    room_id: 'room-1',
-    name: 'Ana',
-    role: 'guest',
-    is_owner: false,
-    is_manual: false,
-    created_at: '2026-05-25T12:00:00.000Z',
-    updated_at: '2026-05-25T12:00:00.000Z',
-    ...overrides,
-  } as RoomMember;
-}
+const meOnStageItem = createQueueItem({
+  id: 'queue-current-stage',
+  member_id: 'member-current',
+  status: 'on_stage',
+  position: 0,
+});
 
-const defaultQueueItem = createQueueItem();
-const defaultMember = createMember();
+const manualOnStageItem = createQueueItem({
+  id: 'queue-manual-stage',
+  member_id: 'member-manual',
+  status: 'on_stage',
+  position: 0,
+});
 
 const mockActions = {
   onFinishTurn: () => console.log('Mock: concluir e voltar ao fim'),
@@ -63,11 +60,9 @@ const meta = {
   component: StageCard,
   decorators: [
     (Story) => (
-      <ScrollView contentContainerStyle={styles.screen}>
-        <View style={styles.preview}>
-          <Story />
-        </View>
-      </ScrollView>
+      <StorybookScreen>
+        <Story />
+      </StorybookScreen>
     ),
   ],
   args: baseArgs,
@@ -113,12 +108,8 @@ export const SomeoneSinging: Story = {
   name: 'Alguém cantando',
   args: {
     ...baseArgs,
-    currentOnStage: defaultQueueItem,
-    currentOnStageMember: createMember({
-      id: 'member-ana',
-      member_id: 'member-ana',
-      name: 'Ana',
-    } as Partial<RoomMember>),
+    currentOnStage: currentOnStageItem,
+    currentOnStageMember: anaMember,
   },
 };
 
@@ -126,15 +117,8 @@ export const MeSinging: Story = {
   name: 'Usuário atual cantando',
   args: {
     ...baseArgs,
-    currentOnStage: createQueueItem({
-      id: 'queue-me',
-      member_id: 'member-me',
-    }),
-    currentOnStageMember: createMember({
-      id: 'member-me',
-      member_id: 'member-me',
-      name: 'Você',
-    } as Partial<RoomMember>),
+    currentOnStage: meOnStageItem,
+    currentOnStageMember: currentMember,
     isMeOnStage: true,
   },
 };
@@ -144,14 +128,12 @@ export const OwnerWatchingSomeoneSinging: Story = {
   args: {
     ...baseArgs,
     currentOnStage: createQueueItem({
-      id: 'queue-bruno',
+      id: 'queue-bruno-stage',
       member_id: 'member-bruno',
+      status: 'on_stage',
+      position: 0,
     }),
-    currentOnStageMember: createMember({
-      id: 'member-bruno',
-      member_id: 'member-bruno',
-      name: 'Bruno',
-    } as Partial<RoomMember>),
+    currentOnStageMember: brunoMember,
     isOwner: true,
   },
 };
@@ -160,17 +142,23 @@ export const ManualSingerOnStage: Story = {
   name: 'Pessoa adicionada pelo dono',
   args: {
     ...baseArgs,
-    currentOnStage: createQueueItem({
-      id: 'queue-manual',
-      member_id: 'manual-singer-1',
-    }),
-    currentOnStageMember: createMember({
-      id: 'manual-singer-1',
-      member_id: 'manual-singer-1',
-      name: 'Carlos sem app',
-      is_manual: true,
-    } as Partial<RoomMember>),
+    currentOnStage: manualOnStageItem,
+    currentOnStageMember: manualMember,
     isOwner: true,
+  },
+};
+
+export const MysterySinger: Story = {
+  name: 'Pessoa sem membro encontrado',
+  args: {
+    ...baseArgs,
+    currentOnStage: createQueueItem({
+      id: 'queue-mystery-stage',
+      member_id: 'member-missing',
+      status: 'on_stage',
+      position: 0,
+    }),
+    currentOnStageMember: null,
   },
 };
 
@@ -187,17 +175,21 @@ export const ChangingQueue: Story = {
   name: 'Alterando fila',
   args: {
     ...baseArgs,
-    currentOnStage: createQueueItem({
-      id: 'queue-me-loading',
-      member_id: 'member-me',
-    }),
-    currentOnStageMember: createMember({
-      id: 'member-me',
-      member_id: 'member-me',
-      name: 'Você',
-    } as Partial<RoomMember>),
+    currentOnStage: meOnStageItem,
+    currentOnStageMember: currentMember,
     isMeOnStage: true,
     isChangingQueue: true,
+  },
+};
+
+export const RemovedWhileOnStage: Story = {
+  name: 'Usuário removido enquanto estava no palco',
+  args: {
+    ...baseArgs,
+    currentOnStage: meOnStageItem,
+    currentOnStageMember: currentMember,
+    isMeOnStage: true,
+    wasRemovedFromRoom: true,
   },
 };
 
@@ -205,8 +197,8 @@ export const ClosedRoom: Story = {
   name: 'Sala encerrada',
   args: {
     ...baseArgs,
-    currentOnStage: defaultQueueItem,
-    currentOnStageMember: defaultMember,
+    currentOnStage: currentOnStageItem,
+    currentOnStageMember: anaMember,
     isRoomClosed: true,
   },
 };
@@ -215,48 +207,48 @@ export const AllStageStates: Story = {
   name: 'Todos os estados principais',
   render: () => (
     <View style={styles.stack}>
-      <StageCard {...baseArgs} currentOnStage={null} currentOnStageMember={null} />
-
       <StageCard
         {...baseArgs}
-        currentOnStage={defaultQueueItem}
-        currentOnStageMember={createMember({
-          name: 'Ana',
-        } as Partial<RoomMember>)}
+        currentOnStage={null}
+        currentOnStageMember={null}
       />
 
       <StageCard
         {...baseArgs}
-        currentOnStage={createQueueItem({
-          id: 'queue-me',
-          member_id: 'member-me',
-        })}
-        currentOnStageMember={createMember({
-          id: 'member-me',
-          member_id: 'member-me',
-          name: 'Você',
-        } as Partial<RoomMember>)}
+        currentOnStage={currentOnStageItem}
+        currentOnStageMember={anaMember}
+      />
+
+      <StageCard
+        {...baseArgs}
+        currentOnStage={meOnStageItem}
+        currentOnStageMember={currentMember}
         isMeOnStage
       />
 
       <StageCard
         {...baseArgs}
         currentOnStage={createQueueItem({
-          id: 'queue-owner-view',
+          id: 'queue-bruno-stage',
           member_id: 'member-bruno',
+          status: 'on_stage',
+          position: 0,
         })}
-        currentOnStageMember={createMember({
-          id: 'member-bruno',
-          member_id: 'member-bruno',
-          name: 'Bruno',
-        } as Partial<RoomMember>)}
+        currentOnStageMember={brunoMember}
         isOwner
       />
 
       <StageCard
         {...baseArgs}
-        currentOnStage={defaultQueueItem}
-        currentOnStageMember={defaultMember}
+        currentOnStage={manualOnStageItem}
+        currentOnStageMember={manualMember}
+        isOwner
+      />
+
+      <StageCard
+        {...baseArgs}
+        currentOnStage={currentOnStageItem}
+        currentOnStageMember={anaMember}
         isRoomClosed
       />
     </View>
@@ -264,14 +256,6 @@ export const AllStageStates: Story = {
 };
 
 const styles = StyleSheet.create({
-  screen: {
-    flexGrow: 1,
-    backgroundColor: colors.background,
-    padding: 20,
-  },
-  preview: {
-    backgroundColor: colors.background,
-  },
   stack: {
     gap: 16,
   },

@@ -2,6 +2,19 @@ import type { Meta, StoryObj } from '@storybook/react-native';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '../../src/constants/colors';
+import {
+  buildMembersById,
+  emptySummary,
+  finalSummary,
+  formatMockMessage,
+  formatMockTime,
+  fullMembers,
+  guestWaitingQueue,
+  meOnStageQueue,
+  ownerQueue,
+  roomScenarioEvents,
+  type QueueMoveDirection,
+} from '../../src/storybook/mocks/roomMocks';
 import type { RoomEvent, RoomSummary } from '../../src/types/eventTypes';
 import type { QueueItem } from '../../src/types/queueTypes';
 import type { RoomMember } from '../../src/types/roomTypes';
@@ -15,8 +28,6 @@ import { RoomHeader } from '../../src/views/components/room/RoomHeader';
 import { StageCard } from '../../src/views/components/room/StageCard';
 import { roomStyles } from '../../src/views/components/room/roomStyles';
 import { AppButton } from '../../src/views/components/ui/AppButton';
-
-type QueueMoveDirection = 'up' | 'down';
 
 type RoomScenarioProps = {
   title: string;
@@ -36,232 +47,6 @@ type RoomScenarioProps = {
   eventsError?: string | null;
   summaryError?: string | null;
 };
-
-function createMember(overrides: Partial<RoomMember> = {}): RoomMember {
-  return {
-    id: 'member-1',
-    room_id: 'room-1',
-    name: 'Ana',
-    role: 'guest',
-    is_owner: false,
-    is_manual: false,
-    created_at: '2026-05-25T21:00:00.000Z',
-    updated_at: '2026-05-25T21:00:00.000Z',
-    ...overrides,
-  } as RoomMember;
-}
-
-function createQueueItem(overrides: Partial<QueueItem> = {}): QueueItem {
-  return {
-    id: 'queue-item-1',
-    room_id: 'room-1',
-    member_id: 'member-1',
-    position: 1,
-    status: 'waiting',
-    created_at: '2026-05-25T21:00:00.000Z',
-    updated_at: '2026-05-25T21:00:00.000Z',
-    ...overrides,
-  } as QueueItem;
-}
-
-type MockRoomEvent = RoomEvent & {
-  message?: string;
-};
-
-function createEvent(overrides: Partial<MockRoomEvent> = {}): RoomEvent {
-  return {
-    id: 'event-1',
-    room_id: 'room-1',
-    event_type: 'mock_event',
-    created_at: '2026-05-25T21:00:00.000Z',
-    message: 'Ana entrou na fila.',
-    payload: {},
-    ...overrides,
-  } as unknown as RoomEvent;
-}
-
-function createSummary(overrides: Partial<RoomSummary> = {}): RoomSummary {
-  return {
-    total_performances: 0,
-    total_skips: 0,
-    total_queue_exits: 0,
-    total_removals: 0,
-    total_participants: 0,
-    ranking: [],
-    ...overrides,
-  } as RoomSummary;
-}
-
-const ownerMember = createMember({
-  id: 'member-owner',
-  name: 'Leandro',
-  role: 'owner',
-  is_owner: true,
-});
-
-const currentMember = createMember({
-  id: 'member-current',
-  name: 'Você',
-  role: 'guest',
-});
-
-const anaMember = createMember({
-  id: 'member-ana',
-  name: 'Ana',
-  role: 'guest',
-});
-
-const brunoMember = createMember({
-  id: 'member-bruno',
-  name: 'Bruno',
-  role: 'guest',
-});
-
-const carlaMember = createMember({
-  id: 'member-carla',
-  name: 'Carla',
-  role: 'guest',
-});
-
-const manualMember = createMember({
-  id: 'member-manual',
-  name: 'Carlos sem app',
-  role: 'guest',
-  is_manual: true,
-});
-
-const fullMembers = [
-  ownerMember,
-  currentMember,
-  anaMember,
-  brunoMember,
-  carlaMember,
-  manualMember,
-];
-
-const guestWaitingQueue = [
-  createQueueItem({
-    id: 'queue-current',
-    member_id: 'member-current',
-    position: 1,
-    status: 'waiting',
-  }),
-  createQueueItem({
-    id: 'queue-ana',
-    member_id: 'member-ana',
-    position: 2,
-    status: 'waiting',
-  }),
-  createQueueItem({
-    id: 'queue-bruno',
-    member_id: 'member-bruno',
-    position: 3,
-    status: 'waiting',
-  }),
-];
-
-const ownerQueue = [
-  createQueueItem({
-    id: 'queue-stage',
-    member_id: 'member-ana',
-    position: 0,
-    status: 'on_stage',
-  }),
-  createQueueItem({
-    id: 'queue-bruno',
-    member_id: 'member-bruno',
-    position: 1,
-    status: 'waiting',
-  }),
-  createQueueItem({
-    id: 'queue-current',
-    member_id: 'member-current',
-    position: 2,
-    status: 'waiting',
-  }),
-  createQueueItem({
-    id: 'queue-manual',
-    member_id: 'member-manual',
-    position: 3,
-    status: 'waiting',
-  }),
-];
-
-const meOnStageQueue = [
-  createQueueItem({
-    id: 'queue-current-stage',
-    member_id: 'member-current',
-    position: 0,
-    status: 'on_stage',
-  }),
-  createQueueItem({
-    id: 'queue-ana',
-    member_id: 'member-ana',
-    position: 1,
-    status: 'waiting',
-  }),
-  createQueueItem({
-    id: 'queue-bruno',
-    member_id: 'member-bruno',
-    position: 2,
-    status: 'waiting',
-  }),
-];
-
-const recentEvents = [
-  createEvent({
-    id: 'event-1',
-    created_at: '2026-05-25T21:00:00.000Z',
-    message: 'Ana entrou na fila.',
-  }),
-  createEvent({
-    id: 'event-2',
-    created_at: '2026-05-25T21:04:00.000Z',
-    message: 'Bruno começou a cantar.',
-  }),
-  createEvent({
-    id: 'event-3',
-    created_at: '2026-05-25T21:08:00.000Z',
-    message: 'Você entrou na fila.',
-  }),
-  createEvent({
-    id: 'event-4',
-    created_at: '2026-05-25T21:12:00.000Z',
-    message: 'Carlos sem app foi adicionado pelo dono.',
-  }),
-];
-
-const finalSummary = createSummary({
-  total_performances: 9,
-  total_participants: 5,
-  total_skips: 2,
-  total_queue_exits: 1,
-  total_removals: 1,
-  ranking: [
-    {
-      member_id: 'member-ana',
-      name: 'Ana',
-      performances: 3,
-    },
-    {
-      member_id: 'member-bruno',
-      name: 'Bruno',
-      performances: 2,
-    },
-    {
-      member_id: 'member-current',
-      name: 'Você',
-      performances: 2,
-    },
-    {
-      member_id: 'member-carla',
-      name: 'Carla',
-      performances: 2,
-    },
-  ],
-});
-
-const emptySummary = createSummary();
 
 const mockActions = {
   onBackHome: () => console.log('Mock: voltar para início'),
@@ -292,25 +77,6 @@ const mockActions = {
     console.log('Mock: remover do palco', item),
 };
 
-function formatMockMessage(event: RoomEvent): string {
-  const mockEvent = event as MockRoomEvent;
-
-  return mockEvent.message ?? 'Evento registrado na sala.';
-}
-
-function formatMockTime(dateValue: string): string {
-  const date = new Date(dateValue);
-
-  if (Number.isNaN(date.getTime())) {
-    return '--:--';
-  }
-
-  return date.toLocaleTimeString('pt-BR', {
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
-
 function RoomScenario({
   title,
   roomStatus,
@@ -331,11 +97,7 @@ function RoomScenario({
 }: RoomScenarioProps) {
   const isRoomClosed = roomStatus === 'closed';
 
-  const membersById = members.reduce<Record<string, RoomMember>>((accumulator, member) => {
-    accumulator[member.id] = member;
-    return accumulator;
-  }, {});
-
+  const membersById = buildMembersById(members);
   const waitingQueue = queueItems.filter((item) => item.status === 'waiting');
   const currentOnStageMember = currentOnStage ? membersById[currentOnStage.member_id] : null;
   const myQueueItem = queueItems.find((item) => item.member_id === currentMemberId) ?? null;
@@ -513,7 +275,7 @@ const meta = {
     currentOnStage: null,
     queueItems: [],
     members: fullMembers,
-    events: recentEvents,
+    events: roomScenarioEvents,
     summary: emptySummary,
   },
 } satisfies Meta<typeof RoomScenario>;
@@ -532,7 +294,7 @@ export const GuestOutsideQueue: Story = {
     currentOnStage: null,
     queueItems: [],
     members: fullMembers,
-    events: recentEvents,
+    events: roomScenarioEvents,
     summary: emptySummary,
   },
 };
@@ -547,7 +309,7 @@ export const GuestWaiting: Story = {
     currentOnStage: null,
     queueItems: guestWaitingQueue,
     members: fullMembers,
-    events: recentEvents,
+    events: roomScenarioEvents,
     summary: emptySummary,
   },
 };
@@ -562,7 +324,7 @@ export const GuestOnStage: Story = {
     currentOnStage: meOnStageQueue[0],
     queueItems: meOnStageQueue,
     members: fullMembers,
-    events: recentEvents,
+    events: roomScenarioEvents,
     summary: emptySummary,
   },
 };
@@ -577,7 +339,7 @@ export const OwnerManagingRoom: Story = {
     currentOnStage: ownerQueue[0],
     queueItems: ownerQueue,
     members: fullMembers,
-    events: recentEvents,
+    events: roomScenarioEvents,
     summary: emptySummary,
   },
 };
@@ -593,7 +355,7 @@ export const RemovedGuest: Story = {
     currentOnStage: null,
     queueItems: guestWaitingQueue.filter((item) => item.member_id !== 'member-current'),
     members: fullMembers.filter((member) => member.id !== 'member-current'),
-    events: recentEvents,
+    events: roomScenarioEvents,
     summary: emptySummary,
   },
 };
@@ -608,7 +370,7 @@ export const ClosedRoom: Story = {
     currentOnStage: null,
     queueItems: [],
     members: fullMembers,
-    events: recentEvents,
+    events: roomScenarioEvents,
     summary: finalSummary,
   },
 };

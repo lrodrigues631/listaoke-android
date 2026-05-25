@@ -1,19 +1,17 @@
 import type { Meta, StoryObj } from '@storybook/react-native';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
+import { StorybookScreen } from '../../src/storybook/decorators/StorybookScreen';
 import { AppButton } from '../../src/views/components/ui/AppButton';
-import { colors } from '../../src/constants/colors';
 
 const meta = {
   title: 'UI/AppButton',
   component: AppButton,
   decorators: [
     (Story) => (
-      <ScrollView contentContainerStyle={styles.screen}>
-        <View style={styles.card}>
-          <Story />
-        </View>
-      </ScrollView>
+      <StorybookScreen withCard centered>
+        <Story />
+      </StorybookScreen>
     ),
   ],
   args: {
@@ -171,19 +169,6 @@ export const AllVariants: Story = {
 };
 
 const styles = StyleSheet.create({
-  screen: {
-    flexGrow: 1,
-    backgroundColor: colors.background,
-    padding: 20,
-    justifyContent: 'center',
-  },
-  card: {
-    backgroundColor: colors.surface,
-    borderColor: colors.borderSoft,
-    borderRadius: 24,
-    borderWidth: 1,
-    padding: 20,
-  },
   stack: {
     gap: 12,
   },
