@@ -1,3 +1,4 @@
+import { clearSavedCurrentRoom, saveCurrentRoom } from '../models/currentRoomStorageModel';
 import { logMemberJoinedEvent, logRoomCreatedEvent } from '../models/eventModel';
 import {
   createGuestMember,
@@ -19,6 +20,27 @@ type JoinRoomFlowParams = {
   guestName: string;
   userId: string;
 };
+
+type RestoreRoomFlowParams = {
+  roomId: string;
+  userId: string;
+};
+
+function buildCurrentRoom(room: Room, member: {
+  id: string;
+  name: string;
+  role: CurrentRoom['memberRole'];
+}): CurrentRoom {
+  return {
+    roomId: room.id,
+    roomCode: room.code,
+    roomName: room.name,
+    roomStatus: room.status,
+    memberId: member.id,
+    memberName: member.name,
+    memberRole: member.role,
+  };
+}
 
 export async function createRoomFlow({
   roomName,
@@ -52,16 +74,9 @@ export async function createRoomFlow({
   });
 
   await logRoomCreatedEvent(room.id, member.id);
+  await saveCurrentRoom(room.id);
 
-  return {
-    roomId: room.id,
-    roomCode: room.code,
-    roomName: room.name,
-    roomStatus: room.status,
-    memberId: member.id,
-    memberName: member.name,
-    memberRole: member.role,
-  };
+  return buildCurrentRoom(room, member);
 }
 
 export async function joinRoomFlow({
@@ -111,15 +126,35 @@ export async function joinRoomFlow({
     await logMemberJoinedEvent(room.id, member.id);
   }
 
-  return {
+  await saveCurrentRoom(room.id);
+
+  return buildCurrentRoom(room, member);
+}
+
+export async function restoreRoomFlow({
+  roomId,
+  userId,
+}: RestoreRoomFlowParams): Promise<CurrentRoom | null> {
+  if (!roomId || !userId) {
+    await clearSavedCurrentRoom();
+    return null;
+  }
+
+  const room = await findRoomById(roomId);
+
+  const member = await findActiveMemberByRoomAndUser({
     roomId: room.id,
-    roomCode: room.code,
-    roomName: room.name,
-    roomStatus: room.status,
-    memberId: member.id,
-    memberName: member.name,
-    memberRole: member.role,
-  };
+    userId,
+  });
+
+  if (!member) {
+    await clearSavedCurrentRoom();
+    return null;
+  }
+
+  await saveCurrentRoom(room.id);
+
+  return buildCurrentRoom(room, member);
 }
 
 export async function loadRoom(roomId: string): Promise<Room> {
@@ -139,4 +174,8 @@ export async function closeRoom(roomId: string, actorMemberId: string): Promise<
     roomId,
     actorMemberId,
   });
+}
+
+export async function clearCurrentRoomSession(): Promise<void> {
+  await clearSavedCurrentRoom();
 }

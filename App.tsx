@@ -3,7 +3,13 @@ import { ActivityIndicator, SafeAreaView, StyleSheet, Text, View } from 'react-n
 
 import { colors } from './src/constants/colors';
 import { startAnonymousSession } from './src/controllers/authController';
-import { createRoomFlow, joinRoomFlow } from './src/controllers/roomController';
+import {
+  clearCurrentRoomSession,
+  createRoomFlow,
+  joinRoomFlow,
+  restoreRoomFlow,
+} from './src/controllers/roomController';
+import { getSavedCurrentRoom } from './src/models/currentRoomStorageModel';
 import type { AuthStatus } from './src/types/authTypes';
 import type { CurrentRoom } from './src/types/roomTypes';
 import { CreateRoomScreen } from './src/views/screens/CreateRoomScreen';
@@ -38,6 +44,44 @@ export default function App() {
 
         setUserId(result.userId);
         setAuthMessage(result.message);
+
+        const savedRoom = await getSavedCurrentRoom();
+
+        if (savedRoom) {
+          try {
+            if (isMounted) {
+              setAuthMessage('Voltando para sua sala...');
+            }
+
+            const restoredRoom = await restoreRoomFlow({
+              roomId: savedRoom.roomId,
+              userId: result.userId,
+            });
+
+            if (!isMounted) return;
+
+            if (restoredRoom) {
+              setCurrentRoom(restoredRoom);
+              setScreen('room');
+              setAuthMessage('Sala restaurada. Bora continuar a cantoria.');
+            } else {
+              setCurrentRoom(null);
+              setScreen('home');
+              setAuthMessage(result.message);
+            }
+          } catch {
+            await clearCurrentRoomSession();
+
+            if (!isMounted) return;
+
+            setCurrentRoom(null);
+            setScreen('home');
+            setAuthMessage(result.message);
+          }
+        }
+
+        if (!isMounted) return;
+
         setAuthStatus('success');
       } catch (error) {
         if (!isMounted) return;
@@ -108,6 +152,13 @@ export default function App() {
     }
   }
 
+  function handleBackHome() {
+    setCurrentRoom(null);
+    setCreateRoomError(null);
+    setJoinRoomError(null);
+    setScreen('home');
+  }
+
   if (authStatus === 'loading') {
     return (
       <SafeAreaView style={styles.centerContainer}>
@@ -166,15 +217,7 @@ export default function App() {
   if (screen === 'room' && currentRoom) {
     return (
       <SafeAreaView style={styles.appContainer}>
-        <RoomScreen
-          room={currentRoom}
-          onBackHome={() => {
-            setCurrentRoom(null);
-            setCreateRoomError(null);
-            setJoinRoomError(null);
-            setScreen('home');
-          }}
-        />
+        <RoomScreen room={currentRoom} onBackHome={handleBackHome} />
       </SafeAreaView>
     );
   }
