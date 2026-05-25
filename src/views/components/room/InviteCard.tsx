@@ -44,7 +44,7 @@ export function InviteCard({
         onPress={onCopyInvite}
       >
         {isCopyingInvite ? (
-          <ActivityIndicator />
+          <ActivityIndicator color={colors.background} />
         ) : (
           <Text style={styles.primaryButtonText}>Copiar convite</Text>
         )}
@@ -55,12 +55,12 @@ export function InviteCard({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#13231D',
+    backgroundColor: colors.accentMuted,
     borderRadius: 28,
     padding: 22,
     gap: 14,
     borderWidth: 1,
-    borderColor: '#285343',
+    borderColor: colors.border,
   },
   headerRow: {
     gap: 4,
@@ -77,7 +77,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   codeBox: {
-    backgroundColor: '#193B2F',
+    backgroundColor: colors.primaryMuted,
     borderWidth: 1,
     borderColor: colors.primary,
     borderRadius: 22,

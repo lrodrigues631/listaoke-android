@@ -27,6 +27,7 @@ export function AppButton({
 }: AppButtonProps) {
   const isDisabled = disabled || loading;
   const indicatorColor = variant === 'primary' ? colors.background : colors.text;
+
   const variantTextStyle = {
     primary: styles.primaryText,
     secondary: styles.secondaryText,
@@ -34,6 +35,7 @@ export function AppButton({
     dangerOutline: styles.dangerOutlineText,
     ghost: styles.ghostText,
   }[variant];
+
   const sizeTextStyle = size === 'small' ? styles.smallText : styles.defaultText;
 
   return (
@@ -65,7 +67,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   default: {
-    borderRadius: 16,
+    borderRadius: 18,
     minHeight: 54,
     paddingHorizontal: 16,
     paddingVertical: 14,
@@ -86,12 +88,12 @@ const styles = StyleSheet.create({
     borderColor: colors.borderSoft,
   },
   danger: {
-    backgroundColor: '#2A171B',
-    borderColor: '#5D2732',
+    backgroundColor: colors.dangerMuted,
+    borderColor: '#6E2638',
   },
   dangerOutline: {
     backgroundColor: 'transparent',
-    borderColor: '#5D2732',
+    borderColor: '#6E2638',
   },
   ghost: {
     backgroundColor: 'transparent',
