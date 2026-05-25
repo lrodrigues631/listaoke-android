@@ -1,29 +1,23 @@
 # Listaokê Mobile
 
-Aplicativo mobile em Expo/React Native para criar salas de karaokê compartilhadas em tempo real.
+App mobile em Expo/React Native para criar salas de karaokê compartilhadas em tempo real.
 
-O Listaokê permite que uma pessoa crie uma sala, compartilhe um código de 4 números e os convidados entrem para participar da fila. A fila é atualizada em tempo real, o palco gira automaticamente e o dono da sala pode administrar a noite.
+O Listaokê permite criar uma sala, compartilhar um código de 4 números e organizar a fila da cantoria sem bagunça. O dono administra a sala, os convidados entram pelo código, a fila gira automaticamente e todos veem as atualizações em tempo real.
 
-## Estado atual do projeto
+## Estado atual
 
-Core funcional já implementado e testado:
+Este projeto já possui um core funcional validado:
 
-- Criação de sala
-- Entrada com código de 4 números
-- Supabase Anonymous Auth
-- Supabase Realtime
-- Fila cíclica
-- Palco automático
-- Histórico da sala
-- Resumo final da sala
-- Ranking de músicas cantadas
-- Controle de dono e convidado
-- Transferência de administração
-- Remoção de membros
-- Participante manual adicionado pelo dono
-- Restauração de sala ao abrir o app
+- App Expo/React Native funcionando
+- TypeScript funcionando
+- Supabase conectado
+- Anonymous Auth funcionando
+- Realtime funcionando
 - APK preview funcionando
-- Storybook funcionando
+- Storybook on-device funcionando
+- Schema público do Supabase salvo em documentação
+- Código versionado no GitHub
+- Checkpoint estável criado
 
 ## Stack
 
@@ -36,7 +30,65 @@ Core funcional já implementado e testado:
 - AsyncStorage
 - react-native-url-polyfill
 - EAS Build
-- Storybook on-device para React Native/Expo
+- Storybook para React Native/Expo
+
+## Funcionalidades implementadas
+
+### Sala
+
+- Criar sala
+- Entrar em sala com código de 4 números
+- Copiar código
+- Copiar convite
+- Fechar sala
+- Restaurar sala ao abrir o app
+
+### Fila
+
+- Entrar na fila
+- Sair da fila
+- Adiar a própria vez
+- Fila cíclica
+- Palco automático
+- Próxima pessoa chamada automaticamente
+- Concluir música e voltar ao fim da fila
+- Pular vez e voltar ao fim da fila
+- Parar de cantar
+
+### Dono da sala
+
+- Mover pessoas na fila para cima e para baixo
+- Remover pessoa da fila
+- Remover pessoa do palco
+- Concluir apresentação de outra pessoa
+- Pular vez de outra pessoa
+- Transferir administração da sala
+- Remover membro da sala
+- Adicionar participante manual, para pessoas sem app
+
+### Participante manual
+
+O dono pode adicionar uma pessoa à fila mesmo que ela não esteja usando o app.
+
+Essa pessoa:
+
+- Aparece como participante manual
+- Pode entrar na fila
+- Pode subir automaticamente ao palco
+- Pode ser controlada pelo dono
+- Conta no histórico
+- Conta no resumo final
+- Conta no ranking de músicas cantadas
+
+### Histórico e resumo
+
+- Histórico da sala com mensagens humanas
+- Resumo final ao fechar sala
+- Total de músicas cantadas
+- Pulos de vez
+- Saídas da fila
+- Participantes
+- Ranking da noite
 
 ## Estrutura geral
 
@@ -47,8 +99,8 @@ src/
   controllers/
   models/
   storybook/
-    mocks/
     decorators/
+    mocks/
   types/
   utils/
   views/
