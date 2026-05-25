@@ -35,6 +35,16 @@ type LeaveRoomMemberParams = {
   memberId: string;
 };
 
+const roomMemberSelect =
+  'id, room_id, user_id, name, role, status, is_manual, created_at, left_at';
+
+function normalizeRoomMember(member: RoomMember): RoomMember {
+  return {
+    ...member,
+    is_manual: Boolean(member.is_manual),
+  };
+}
+
 export async function createOwnerMember({
   roomId,
   userId,
@@ -48,8 +58,9 @@ export async function createOwnerMember({
       name,
       role: 'owner',
       status: 'active',
+      is_manual: false,
     })
-    .select('id, room_id, user_id, name, role, status, created_at, left_at')
+    .select(roomMemberSelect)
     .single();
 
   if (error) {
@@ -60,7 +71,7 @@ export async function createOwnerMember({
     throw new Error('O dono foi criado, mas o Supabase não retornou os dados.');
   }
 
-  return data as RoomMember;
+  return normalizeRoomMember(data as RoomMember);
 }
 
 export async function createGuestMember({
@@ -82,7 +93,7 @@ export async function createGuestMember({
     throw new Error('Você entrou na sala, mas o Supabase não retornou seus dados.');
   }
 
-  return memberData as RoomMember;
+  return normalizeRoomMember(memberData as RoomMember);
 }
 
 export async function findActiveMemberByRoomAndUser({
@@ -91,7 +102,7 @@ export async function findActiveMemberByRoomAndUser({
 }: FindActiveMemberParams): Promise<RoomMember | null> {
   const { data, error } = await supabase
     .from('room_members')
-    .select('id, room_id, user_id, name, role, status, created_at, left_at')
+    .select(roomMemberSelect)
     .eq('room_id', roomId)
     .eq('user_id', userId)
     .eq('status', 'active')
@@ -105,13 +116,13 @@ export async function findActiveMemberByRoomAndUser({
     return null;
   }
 
-  return data as RoomMember;
+  return normalizeRoomMember(data as RoomMember);
 }
 
 export async function listActiveMembersByRoom(roomId: string): Promise<RoomMember[]> {
   const { data, error } = await supabase
     .from('room_members')
-    .select('id, room_id, user_id, name, role, status, created_at, left_at')
+    .select(roomMemberSelect)
     .eq('room_id', roomId)
     .eq('status', 'active')
     .order('created_at', { ascending: true });
@@ -120,7 +131,7 @@ export async function listActiveMembersByRoom(roomId: string): Promise<RoomMembe
     throw new Error(`Não consegui carregar os membros da sala: ${error.message}`);
   }
 
-  return (data ?? []) as RoomMember[];
+  return ((data ?? []) as RoomMember[]).map(normalizeRoomMember);
 }
 
 export async function transferRoomOwnershipRpc({

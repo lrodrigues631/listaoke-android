@@ -6,6 +6,12 @@ type QueueMemberParams = {
   memberId: string;
 };
 
+type OwnerAddManualQueueItemParams = {
+  roomId: string;
+  actorMemberId: string;
+  name: string;
+};
+
 type OwnerRemoveQueueItemParams = {
   roomId: string;
   actorMemberId: string;
@@ -17,6 +23,12 @@ type OwnerMoveQueueItemParams = {
   actorMemberId: string;
   targetQueueItemId: string;
   direction: 'up' | 'down';
+};
+
+type OwnerControlQueueItemParams = {
+  roomId: string;
+  actorMemberId: string;
+  targetQueueItemId: string;
 };
 
 export async function listActiveQueueItemsByRoom(roomId: string): Promise<QueueItem[]> {
@@ -90,6 +102,22 @@ export async function moveOwnTurnDownRpc({ roomId, memberId }: QueueMemberParams
   }
 }
 
+export async function ownerAddManualQueueItemRpc({
+  roomId,
+  actorMemberId,
+  name,
+}: OwnerAddManualQueueItemParams): Promise<void> {
+  const { error } = await supabase.rpc('owner_add_manual_queue_item', {
+    p_room_id: roomId,
+    p_actor_member_id: actorMemberId,
+    p_name: name,
+  });
+
+  if (error) {
+    throw new Error(`Não consegui adicionar essa pessoa na fila: ${error.message}`);
+  }
+}
+
 export async function ownerRemoveQueueItemRpc({
   roomId,
   actorMemberId,
@@ -121,5 +149,37 @@ export async function ownerMoveQueueItemRpc({
 
   if (error) {
     throw new Error(`Não consegui mover na fila: ${error.message}`);
+  }
+}
+
+export async function ownerFinishQueueItemRpc({
+  roomId,
+  actorMemberId,
+  targetQueueItemId,
+}: OwnerControlQueueItemParams): Promise<void> {
+  const { error } = await supabase.rpc('queue_owner_finish_item', {
+    p_room_id: roomId,
+    p_actor_member_id: actorMemberId,
+    p_target_queue_item_id: targetQueueItemId,
+  });
+
+  if (error) {
+    throw new Error(`Não consegui concluir essa apresentação: ${error.message}`);
+  }
+}
+
+export async function ownerSkipQueueItemRpc({
+  roomId,
+  actorMemberId,
+  targetQueueItemId,
+}: OwnerControlQueueItemParams): Promise<void> {
+  const { error } = await supabase.rpc('queue_owner_skip_item', {
+    p_room_id: roomId,
+    p_actor_member_id: actorMemberId,
+    p_target_queue_item_id: targetQueueItemId,
+  });
+
+  if (error) {
+    throw new Error(`Não consegui pular essa vez: ${error.message}`);
   }
 }

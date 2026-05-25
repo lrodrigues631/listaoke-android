@@ -28,8 +28,11 @@ import {
   leaveQueue,
   loadRoomQueue,
   moveMyTurnDown,
+  ownerAddManualQueueItem,
+  ownerFinishQueueItem,
   ownerMoveQueueItem,
   ownerRemoveFromQueue,
+  ownerSkipQueueItem,
   skipMyTurn,
 } from '../../controllers/queueController';
 import { closeRoom, loadRoom } from '../../controllers/roomController';
@@ -267,7 +270,9 @@ export function RoomScreen({ room, onBackHome }: RoomScreenProps) {
 
   const currentOnStageMember = currentOnStage ? membersById[currentOnStage.member_id] : null;
 
-  const transferableMembers = members.filter((member) => member.id !== room.memberId);
+  const transferableMembers = members.filter(
+    (member) => member.id !== room.memberId && !member.is_manual
+  );
   const removableMembers = members.filter((member) => member.id !== room.memberId);
 
   async function runQueueAction(action: () => Promise<void>) {
@@ -289,6 +294,7 @@ export function RoomScreen({ room, onBackHome }: RoomScreenProps) {
       setQueueError(null);
 
       await action();
+      await fetchMembers();
       await fetchQueue();
       await fetchEvents();
       await fetchSummary();
@@ -375,6 +381,48 @@ export function RoomScreen({ room, onBackHome }: RoomScreenProps) {
           style: 'destructive',
           onPress: () =>
             runQueueAction(() => ownerRemoveFromQueue(room.roomId, room.memberId, item.id)),
+        },
+      ]
+    );
+  }
+
+  function confirmOwnerFinishQueueItem(item: QueueItem) {
+    const targetMember = membersById[item.member_id];
+    const targetName = targetMember?.name ?? 'Participante';
+
+    Alert.alert(
+      'Concluir apresentação?',
+      `${targetName} volta para o fim da fila depois dessa música.`,
+      [
+        {
+          text: 'Cancelar',
+          style: 'cancel',
+        },
+        {
+          text: 'Concluir',
+          onPress: () =>
+            runQueueAction(() => ownerFinishQueueItem(room.roomId, room.memberId, item.id)),
+        },
+      ]
+    );
+  }
+
+  function confirmOwnerSkipQueueItem(item: QueueItem) {
+    const targetMember = membersById[item.member_id];
+    const targetName = targetMember?.name ?? 'Participante';
+
+    Alert.alert(
+      'Pular vez?',
+      `${targetName} volta para o fim da fila sem cantar agora.`,
+      [
+        {
+          text: 'Cancelar',
+          style: 'cancel',
+        },
+        {
+          text: 'Pular vez',
+          onPress: () =>
+            runQueueAction(() => ownerSkipQueueItem(room.roomId, room.memberId, item.id)),
         },
       ]
     );
@@ -493,6 +541,11 @@ export function RoomScreen({ room, onBackHome }: RoomScreenProps) {
   }
 
   function confirmTransferOwnership(targetMember: RoomMember) {
+    if (targetMember.is_manual) {
+      Alert.alert('Não dá', 'Participantes adicionados manualmente não podem virar dono da sala.');
+      return;
+    }
+
     Alert.alert(
       'Transferir administração?',
       `Você quer passar a sala para ${targetMember.name}? Você continuará na sala como convidado.`,
@@ -607,6 +660,8 @@ export function RoomScreen({ room, onBackHome }: RoomScreenProps) {
             onFinishTurn={() => runQueueAction(() => finishMyTurn(room.roomId, room.memberId))}
             onSkipTurn={() => runQueueAction(() => skipMyTurn(room.roomId, room.memberId))}
             onStopSinging={confirmStopSinging}
+            onOwnerFinishTurn={confirmOwnerFinishQueueItem}
+            onOwnerSkipTurn={confirmOwnerSkipQueueItem}
             onOwnerRemoveFromStage={confirmOwnerRemoveQueueItem}
           />
 
@@ -646,6 +701,9 @@ export function RoomScreen({ room, onBackHome }: RoomScreenProps) {
             isRoomClosed={isRoomClosed}
             isOwner={isOwner}
             isChangingQueue={isChangingQueue}
+            onOwnerAddManualQueueItem={(name) =>
+              runQueueAction(() => ownerAddManualQueueItem(room.roomId, room.memberId, name))
+            }
             onOwnerMoveQueueItem={(item, direction) =>
               runQueueAction(() =>
                 ownerMoveQueueItem(room.roomId, room.memberId, item.id, direction)

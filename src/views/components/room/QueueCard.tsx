@@ -1,5 +1,7 @@
-import { ActivityIndicator, Text, View } from 'react-native';
+import { useState } from 'react';
+import { ActivityIndicator, Text, TextInput, View } from 'react-native';
 
+import { colors } from '../../../constants/colors';
 import type { QueueItem } from '../../../types/queueTypes';
 import type { RoomMember } from '../../../types/roomTypes';
 import { AppButton } from '../ui/AppButton';
@@ -16,6 +18,7 @@ type QueueCardProps = {
   isRoomClosed: boolean;
   isOwner: boolean;
   isChangingQueue: boolean;
+  onOwnerAddManualQueueItem: (name: string) => void;
   onOwnerMoveQueueItem: (item: QueueItem, direction: QueueMoveDirection) => void;
   onOwnerRemoveQueueItem: (item: QueueItem) => void;
 };
@@ -29,15 +32,52 @@ export function QueueCard({
   isRoomClosed,
   isOwner,
   isChangingQueue,
+  onOwnerAddManualQueueItem,
   onOwnerMoveQueueItem,
   onOwnerRemoveQueueItem,
 }: QueueCardProps) {
+  const [manualName, setManualName] = useState('');
+
+  function handleAddManualPerson() {
+    const cleanName = manualName.trim();
+
+    if (!cleanName) {
+      return;
+    }
+
+    onOwnerAddManualQueueItem(cleanName);
+    setManualName('');
+  }
+
   return (
     <View style={styles.card}>
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>Fila de espera</Text>
         <Text style={styles.counter}>{waitingQueue.length}</Text>
       </View>
+
+      {isOwner && !isRoomClosed && (
+        <View style={styles.manualQueueBox}>
+          <Text style={styles.cardLabel}>Adicionar sem app</Text>
+
+          <TextInput
+            value={manualName}
+            onChangeText={setManualName}
+            placeholder="Nome da pessoa"
+            placeholderTextColor={colors.textSoft}
+            editable={!isChangingQueue}
+            style={styles.manualQueueInput}
+          />
+
+          <AppButton
+            title="Colocar na fila"
+            size="small"
+            disabled={isChangingQueue || !manualName.trim()}
+            loading={isChangingQueue}
+            onPress={handleAddManualPerson}
+          />
+        </View>
+      )}
 
       {isLoadingQueue && (
         <View style={styles.loadingRow}>
@@ -70,11 +110,16 @@ export function QueueCard({
               <View style={styles.queueInfo}>
                 <Text style={styles.memberName}>{member?.name ?? 'Participante'}</Text>
                 <Text style={styles.memberRole}>
-                  {member?.role === 'owner' ? 'Dono da sala' : 'Convidado'}
+                  {member?.is_manual
+                    ? 'Adicionado pelo dono'
+                    : member?.role === 'owner'
+                      ? 'Dono da sala'
+                      : 'Convidado'}
                 </Text>
               </View>
 
               {isThisMe && <Text style={styles.youBadge}>Você</Text>}
+              {member?.is_manual && <Text style={styles.manualBadge}>Manual</Text>}
 
               {isOwner && (
                 <View style={styles.queueAdminActions}>

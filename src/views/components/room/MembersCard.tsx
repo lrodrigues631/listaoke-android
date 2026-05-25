@@ -52,36 +52,42 @@ export function MembersCard({
         members.map((member) => {
           const isThisMe = member.id === currentMemberId;
           const canManageThisMember = isOwner && !isThisMe && !isRoomClosed;
+          const canTransferToThisMember = canManageThisMember && !member.is_manual;
 
           return (
             <View key={member.id} style={styles.memberItem}>
               <View style={styles.memberInfo}>
                 <Text style={styles.memberName}>{member.name}</Text>
                 <Text style={styles.memberRole}>
-                  {member.role === 'owner' ? 'Dono da sala' : 'Convidado'}
+                  {member.is_manual
+                    ? 'Adicionado pelo dono'
+                    : member.role === 'owner'
+                      ? 'Dono da sala'
+                      : 'Convidado'}
                 </Text>
               </View>
 
               <View style={styles.memberActions}>
                 {isThisMe && <Text style={styles.youBadge}>Você</Text>}
+                {member.is_manual && <Text style={styles.manualBadge}>Manual</Text>}
+
+                {canTransferToThisMember && (
+                  <AppButton
+                    title="Virar dono"
+                    size="small"
+                    disabled={isChangingMember}
+                    onPress={() => onTransferOwnership(member)}
+                  />
+                )}
 
                 {canManageThisMember && (
-                  <>
-                    <AppButton
-                      title="Virar dono"
-                      size="small"
-                      disabled={isChangingMember}
-                      onPress={() => onTransferOwnership(member)}
-                    />
-
-                    <AppButton
-                      title="Remover"
-                      variant="dangerOutline"
-                      size="small"
-                      disabled={isChangingMember}
-                      onPress={() => onRemoveMember(member)}
-                    />
-                  </>
+                  <AppButton
+                    title="Remover"
+                    variant="dangerOutline"
+                    size="small"
+                    disabled={isChangingMember}
+                    onPress={() => onRemoveMember(member)}
+                  />
                 )}
               </View>
             </View>

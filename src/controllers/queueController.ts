@@ -4,8 +4,11 @@ import {
   leaveOwnQueueRpc,
   listActiveQueueItemsByRoom,
   moveOwnTurnDownRpc,
+  ownerAddManualQueueItemRpc,
+  ownerFinishQueueItemRpc,
   ownerMoveQueueItemRpc,
   ownerRemoveQueueItemRpc,
+  ownerSkipQueueItemRpc,
   skipOwnTurnRpc,
 } from '../models/queueModel';
 import type { QueueItem } from '../types/queueTypes';
@@ -58,6 +61,24 @@ export async function moveMyTurnDown(roomId: string, memberId: string): Promise<
   await moveOwnTurnDownRpc({ roomId, memberId });
 }
 
+export async function ownerAddManualQueueItem(
+  roomId: string,
+  actorMemberId: string,
+  name: string
+): Promise<void> {
+  const cleanName = name.trim();
+
+  if (!roomId || !actorMemberId || !cleanName) {
+    throw new Error('Informe o nome da pessoa para colocar na fila.');
+  }
+
+  await ownerAddManualQueueItemRpc({
+    roomId,
+    actorMemberId,
+    name: cleanName,
+  });
+}
+
 export async function ownerRemoveFromQueue(
   roomId: string,
   actorMemberId: string,
@@ -89,5 +110,37 @@ export async function ownerMoveQueueItem(
     actorMemberId,
     targetQueueItemId,
     direction,
+  });
+}
+
+export async function ownerFinishQueueItem(
+  roomId: string,
+  actorMemberId: string,
+  targetQueueItemId: string
+): Promise<void> {
+  if (!roomId || !actorMemberId || !targetQueueItemId) {
+    throw new Error('Não consegui identificar sala, dono ou pessoa no palco.');
+  }
+
+  await ownerFinishQueueItemRpc({
+    roomId,
+    actorMemberId,
+    targetQueueItemId,
+  });
+}
+
+export async function ownerSkipQueueItem(
+  roomId: string,
+  actorMemberId: string,
+  targetQueueItemId: string
+): Promise<void> {
+  if (!roomId || !actorMemberId || !targetQueueItemId) {
+    throw new Error('Não consegui identificar sala, dono ou pessoa no palco.');
+  }
+
+  await ownerSkipQueueItemRpc({
+    roomId,
+    actorMemberId,
+    targetQueueItemId,
   });
 }

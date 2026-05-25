@@ -18,10 +18,11 @@ export type Room = {
 export type RoomMember = {
   id: string;
   room_id: string;
-  user_id: string;
+  user_id: string | null;
   name: string;
   role: MemberRole;
   status: MemberStatus;
+  is_manual: boolean;
   created_at: string;
   left_at: string | null;
 };

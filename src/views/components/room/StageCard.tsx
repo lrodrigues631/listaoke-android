@@ -18,6 +18,8 @@ type StageCardProps = {
   onFinishTurn: () => void;
   onSkipTurn: () => void;
   onStopSinging: () => void;
+  onOwnerFinishTurn: (item: QueueItem) => void;
+  onOwnerSkipTurn: (item: QueueItem) => void;
   onOwnerRemoveFromStage: (item: QueueItem) => void;
 };
 
@@ -34,9 +36,12 @@ export function StageCard({
   onFinishTurn,
   onSkipTurn,
   onStopSinging,
+  onOwnerFinishTurn,
+  onOwnerSkipTurn,
   onOwnerRemoveFromStage,
 }: StageCardProps) {
   const isBusy = isChangingQueue || isRoomClosed;
+  const isManualSinger = Boolean(currentOnStageMember?.is_manual);
 
   return (
     <View style={styles.stageCard}>
@@ -49,11 +54,18 @@ export function StageCard({
         </View>
       ) : currentOnStage && !isRoomClosed ? (
         <>
-          <Text style={styles.heroEyebrow}>No palco</Text>
-          <Text style={styles.stageName}>{currentOnStageMember?.name ?? 'Alguém misterioso'}</Text>
+          <Text style={styles.heroEyebrow}>
+            {isManualSinger ? 'No palco • adicionado pelo dono' : 'No palco'}
+          </Text>
+
+          <Text style={styles.stageName}>
+            {currentOnStageMember?.name ?? 'Alguém misterioso'}
+          </Text>
 
           {isMeOnStage ? (
             <Text style={styles.stageHint}>Sua vez está rolando.</Text>
+          ) : isOwner ? (
+            <Text style={styles.stageHint}>Você controla essa vez como dono da sala.</Text>
           ) : (
             <Text style={styles.stageHint}>A vez está rolando.</Text>
           )}
@@ -86,13 +98,30 @@ export function StageCard({
           )}
 
           {isOwner && !isMeOnStage && (
-            <AppButton
-              title="Remover do palco"
-              variant="danger"
-              loading={isChangingQueue}
-              disabled={isBusy}
-              onPress={() => onOwnerRemoveFromStage(currentOnStage)}
-            />
+            <View style={styles.buttonGroup}>
+              <AppButton
+                title="Concluir e voltar ao fim"
+                loading={isChangingQueue}
+                disabled={isBusy}
+                onPress={() => onOwnerFinishTurn(currentOnStage)}
+              />
+
+              <AppButton
+                title="Pular vez"
+                variant="secondary"
+                loading={isChangingQueue}
+                disabled={isBusy}
+                onPress={() => onOwnerSkipTurn(currentOnStage)}
+              />
+
+              <AppButton
+                title="Remover do palco"
+                variant="dangerOutline"
+                loading={isChangingQueue}
+                disabled={isBusy}
+                onPress={() => onOwnerRemoveFromStage(currentOnStage)}
+              />
+            </View>
           )}
         </>
       ) : (
