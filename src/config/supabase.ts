@@ -18,6 +18,14 @@ if (!supabaseUrl.startsWith('https://')) {
   throw new Error(`URL do Supabase inválida: ${supabaseUrl}`);
 }
 
+export const supabaseDebugInfo = {
+  hasUrl: Boolean(supabaseUrl),
+  hasAnonKey: Boolean(supabaseAnonKey),
+  url: supabaseUrl,
+  urlStartsWithHttps: supabaseUrl.startsWith('https://'),
+  anonKeyLength: supabaseAnonKey.length,
+};
+
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     storage: AsyncStorage,

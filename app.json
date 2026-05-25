@@ -22,7 +22,8 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.lrodrigues631.listaokemobile"
+      "package": "com.lrodrigues631.listaokemobile",
+      "permissions": ["android.permission.INTERNET"]
     },
     "web": {
       "favicon": "./assets/favicon.png"
