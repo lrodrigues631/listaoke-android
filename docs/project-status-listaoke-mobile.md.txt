@@ -1,0 +1,326 @@
+Estou trabalhando no app Listaokê Mobile.
+
+Contexto geral:
+Listaokê Mobile é um app Expo/React Native com TypeScript para criar salas de karaokê compartilhadas em tempo real. Uma pessoa cria a sala, compartilha o código, os convidados entram, todos veem a fila atualizada em tempo real e cada pessoa controla sua própria participação.
+
+Repositório:
+listaoke-mobile
+
+Projeto separado da versão web:
+
+* listaoke = versão web/PWA
+* listaoke-mobile = versão Expo/React Native
+
+Stack atual:
+
+* Expo
+* React Native
+* TypeScript
+* Supabase
+* Supabase Anonymous Auth
+* Supabase Realtime
+* AsyncStorage
+* react-native-url-polyfill
+* EAS Build
+* Storybook on-device para React Native/Expo
+
+Importante:
+Não existe backend próprio.
+Não usamos Next.js.
+Não usamos Prisma.
+Não usamos Stripe.
+O app usa Supabase diretamente.
+
+Banco Supabase:
+Tabelas usadas:
+
+* rooms
+* room_members
+* queue_items
+* room_events
+
+Funções SQL já existentes/usadas:
+
+* generate_room_code()
+* transfer_room_ownership(p_room_id uuid, p_new_owner_member_id uuid)
+* transfer_room_ownership_with_event(...)
+* queue_join(...)
+* queue_leave_own(...)
+* queue_finish_own(...)
+* queue_skip_own(...)
+* queue_move_own_down(...)
+* queue_owner_remove_item(...)
+* queue_owner_move_item(...)
+* queue_owner_finish_item(...)
+* queue_owner_skip_item(...)
+* owner_add_manual_queue_item(...)
+* remove_room_member(...)
+* leave_room_member(...)
+* join_room_member(...)
+* close_room(...)
+* create_room_event(...)
+* get_room_summary(...)
+
+Supabase:
+
+* RLS ativado
+* Realtime ativado para rooms, room_members, queue_items e room_events
+* Anonymous Sign-Ins ativado
+* permissões ajustadas para authenticated
+* build APK já conectando corretamente ao Supabase
+
+Observação importante:
+A URL correta do Supabase é:
+https://tidxkyzqpcxyetxjkhja.supabase.co
+
+Houve um bug anterior por URL errada, faltava o “x” depois de “tid”. Isso já foi corrigido no EAS env e no .env.local.
+
+EAS Build:
+
+* APK preview já foi gerado e funcionou
+* @supabase/supabase-js foi fixado em versão compatível com build Android por causa de erro do Hermes com dynamic import/OTEL_PKG
+* app.json foi ajustado para Android standalone
+* Supabase client foi ajustado para React Native com:
+
+  * react-native-url-polyfill/auto
+  * AsyncStorage
+  * detectSessionInUrl: false
+  * persistSession: true
+  * autoRefreshToken: true
+
+Funcionalidades atuais já implementadas:
+
+1. Criar sala
+2. Entrar em sala com código de 4 números
+3. Supabase Anonymous Auth
+4. Realtime entre aparelhos
+5. Copiar código tocando no chip/código
+6. Copiar convite
+7. Fila cíclica
+8. Palco automático
+9. Usuário entra na fila
+10. Usuário sai da fila
+11. Usuário adia a própria vez
+12. Usuário no palco pode concluir e voltar ao fim
+13. Usuário no palco pode pular e voltar ao fim
+14. Usuário no palco pode parar de cantar
+15. Dono pode remover pessoa da fila
+16. Dono pode remover pessoa do palco
+17. Dono pode mover pessoas na fila para cima/baixo
+18. Dono pode transferir administração
+19. Dono pode remover membro da sala
+20. Dono pode fechar sala
+21. Convidado pode sair da sala de verdade
+22. Pessoa removida/saiu pode entrar de novo na sala sem erro de duplicate key
+23. Sala salva/restaurada ao abrir o app
+24. Histórico humano da sala
+25. Resumo final ao fechar sala
+26. Ranking de músicas cantadas
+27. Participante manual/adicionado pelo dono
+
+Participante manual:
+Foi adicionada a função para o dono colocar uma pessoa na fila mesmo que ela não esteja usando o app.
+Essa pessoa:
+
+* vira um room_member com user_id null
+* tem is_manual = true
+* aparece como “Manual” ou “Adicionado pelo dono”
+* pode entrar na fila
+* pode subir ao palco automaticamente
+* pode ser movida/removida pelo dono
+* pode ter a vez concluída/pulada pelo dono
+* entra no histórico
+* conta no resumo final/ranking
+
+Regras de produto:
+Dono pode:
+
+* criar sala
+* controlar entradas e saídas
+* adicionar/remover participantes da fila
+* mover pessoas na fila
+* passar vez de qualquer pessoa no palco
+* concluir apresentação de qualquer pessoa no palco
+* adicionar participante manual
+* transferir sala para outro membro ativo
+* remover membro da sala
+* fechar sala
+
+Convidado pode:
+
+* entrar na sala
+* escolher nome/apelido
+* entrar na fila
+* sair da própria fila
+* adiar a própria vez
+* pular a própria vez quando está no palco
+* concluir a própria vez quando está no palco
+* sair da sala de verdade
+* ver fila, membros e histórico em tempo real
+
+Convidado não pode:
+
+* mover outras pessoas
+* remover outras pessoas
+* concluir apresentação de outra pessoa
+* pular vez de outra pessoa
+* adicionar participante manual
+* transferir sala
+* fechar sala
+* ver botões administrativos
+
+Regras importantes:
+
+* Sala inicia apenas com o dono
+* Convidado entra como membro, mas só entra na fila ao tocar em “Entrar na fila”
+* Sala fechada bloqueia novas entradas e ações
+* Transferir sala não remove o dono antigo, apenas muda o cargo dele para convidado e promove outro membro para dono
+* Participante manual não pode virar dono
+* Histórico deve usar mensagens humanas, não nomes técnicos de eventos
+* Nada de cronômetro, porque a duração das músicas varia
+
+Tom das mensagens:
+Português brasileiro, direto, leve e divertido sem exagero.
+Exemplos:
+
+* “Convite copiado. Agora manda no grupo.”
+* “A fila está vazia. Coragem, alguém precisa começar.”
+* “Você está no palco. Manda ver.”
+* “Essa sala já foi encerrada. O karaokê dessa turma acabou por hoje.”
+
+Storybook:
+Storybook já foi configurado no app Expo/React Native no modo on-device.
+
+Scripts:
+
+* npm start: abre o app normal
+* npm run storybook: abre o Storybook
+* npm run storybook:clear: abre Storybook limpando cache
+* npx tsc --noEmit: valida TypeScript
+
+Estado do Storybook:
+
+* App normal não foi sequestrado pelo Storybook
+* Storybook abre no Expo Go
+* Stories de exemplo foram removidos
+* Stories reais foram criados
+* Mocks centralizados em src/storybook/mocks/
+* Decorator visual criado em src/storybook/decorators/
+* TypeScript está passando
+* App normal continua funcionando
+
+Arquivos/pastas do Storybook:
+
+* .rnstorybook/stories/AppButton.stories.tsx
+* .rnstorybook/stories/RoomHeader.stories.tsx
+* .rnstorybook/stories/StageCard.stories.tsx
+* .rnstorybook/stories/MyParticipationCard.stories.tsx
+* .rnstorybook/stories/QueueCard.stories.tsx
+* .rnstorybook/stories/MembersCard.stories.tsx
+* .rnstorybook/stories/HistoryPreviewCard.stories.tsx
+* .rnstorybook/stories/FinalSummaryCard.stories.tsx
+* .rnstorybook/stories/InviteCard.stories.tsx
+* .rnstorybook/stories/AdminCard.stories.tsx
+* .rnstorybook/stories/RoomScenarios.stories.tsx
+* src/storybook/mocks/roomMocks.ts
+* src/storybook/decorators/StorybookScreen.tsx
+
+Componentes com stories:
+
+* AppButton
+* RoomHeader
+* StageCard
+* MyParticipationCard
+* QueueCard
+* MembersCard
+* HistoryPreviewCard
+* FinalSummaryCard
+* InviteCard
+* AdminCard
+
+Cenários completos em RoomScenarios:
+
+* Convidado fora da fila
+* Convidado esperando
+* Usuário no palco
+* Dono gerenciando sala
+* Convidado removido
+* Sala encerrada
+* Sala carregando
+* Sala com erros
+
+Mocks existentes:
+
+* createMember
+* createQueueItem
+* createEvent
+* createSummary
+* buildMembersById
+* formatMockMessage
+* formatMockTime
+* ownerMember
+* currentMember
+* anaMember
+* brunoMember
+* carlaMember
+* manualMember
+* fullMembers
+* ownerOnlyMembers
+* ownerAndGuestsMembers
+* ownerWithManualMembers
+* onePersonQueue
+* guestWaitingQueue
+* multiplePeopleQueue
+* ownerQueue
+* meOnStageQueue
+* recentEvents
+* manyEvents
+* roomScenarioEvents
+* emptySummary
+* oneSongSummary
+* rankingSummary
+* manyParticipantsSummary
+* finalSummary
+
+Identidade visual atual:
+Existe uma paleta provisória roxo/magenta, inspirada em estética noturna/karaokê.
+Ainda não é o design final.
+A ideia é parar de mexer visualmente aos pedaços e fazer redesign final depois usando Storybook como checklist visual.
+
+Diretriz para redesign futuro:
+
+* Criar branch separada, por exemplo:
+  git checkout -b redesign-ui
+* Preservar props públicas dos componentes
+* Não mexer em controllers
+* Não mexer em models
+* Não mexer em Supabase
+* Não mexer em SQL
+* Não mexer em autenticação
+* Não mexer em realtime
+* Não alterar regra de negócio
+* Usar Storybook como harness/checklist visual
+* Qualquer componente redesenhado precisa continuar funcionando nos stories existentes
+* Testar app real depois do Storybook
+
+Ordem recomendada para redesign:
+
+1. Criar docs/redesign-brief.md
+2. Redesenhar AppButton, RoomHeader e InviteCard
+3. Depois StageCard e MyParticipationCard
+4. Depois QueueCard e MembersCard
+5. Depois HistoryPreviewCard e FinalSummaryCard
+6. Depois RoomScenarios
+7. Depois telas Home, CreateRoomScreen e JoinRoomScreen
+8. Só depois gerar nova build preview
+
+Regra principal para Codex:
+Redesenhar visualmente, mas preservar comportamento, props e integração com o app real.
+Não alterar Supabase, SQL, controllers, models, autenticação ou realtime.
+
+Estado atual:
+O app está funcional.
+O APK preview funciona.
+O Storybook funciona.
+TypeScript passa.
+A base está pronta para congelar o core e iniciar uma fase planejada de redesign visual.
