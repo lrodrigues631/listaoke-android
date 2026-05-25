@@ -340,7 +340,10 @@ export function RoomScreen({ room, onBackHome }: RoomScreenProps) {
     try {
       setIsCopyingInvite(true);
       await copyRoomCode(room.roomCode);
-      Alert.alert('Código copiado', 'Agora manda no grupo antes que alguém invente de cantar sem fila.');
+      Alert.alert(
+        'Código copiado',
+        'Agora manda no grupo antes que alguém invente de cantar sem fila.'
+      );
     } catch {
       Alert.alert('Não consegui copiar', 'Copia o código manualmente por enquanto. Chato, mas funciona.');
     } finally {
@@ -617,8 +620,7 @@ export function RoomScreen({ room, onBackHome }: RoomScreenProps) {
       <RoomHeader
         roomName={room.roomName}
         roomCode={room.roomCode}
-        isClosed={isRoomClosed}
-        isCopyingCode={isCopyingInvite}
+        isRoomClosed={isRoomClosed}
         onCopyCode={handleCopyCode}
       />
 
