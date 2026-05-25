@@ -28,6 +28,7 @@ import {
   leaveQueue,
   loadRoomQueue,
   moveMyTurnDown,
+  ownerMoveQueueItem,
   ownerRemoveFromQueue,
   skipMyTurn,
 } from '../../controllers/queueController';
@@ -645,6 +646,11 @@ export function RoomScreen({ room, onBackHome }: RoomScreenProps) {
             isRoomClosed={isRoomClosed}
             isOwner={isOwner}
             isChangingQueue={isChangingQueue}
+            onOwnerMoveQueueItem={(item, direction) =>
+              runQueueAction(() =>
+                ownerMoveQueueItem(room.roomId, room.memberId, item.id, direction)
+              )
+            }
             onOwnerRemoveQueueItem={confirmOwnerRemoveQueueItem}
           />
 

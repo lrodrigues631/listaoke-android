@@ -303,6 +303,13 @@ export const roomStyles = StyleSheet.create({
   queueInfo: {
     flex: 1,
   },
+  queueAdminActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'flex-end',
+    gap: 6,
+    maxWidth: 132,
+  },
   eventItem: {
     backgroundColor: colors.surfaceRaised,
     borderRadius: 12,

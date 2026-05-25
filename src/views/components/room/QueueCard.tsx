@@ -5,6 +5,8 @@ import type { RoomMember } from '../../../types/roomTypes';
 import { AppButton } from '../ui/AppButton';
 import { roomStyles as styles } from './roomStyles';
 
+type QueueMoveDirection = 'up' | 'down';
+
 type QueueCardProps = {
   waitingQueue: QueueItem[];
   membersById: Record<string, RoomMember>;
@@ -14,6 +16,7 @@ type QueueCardProps = {
   isRoomClosed: boolean;
   isOwner: boolean;
   isChangingQueue: boolean;
+  onOwnerMoveQueueItem: (item: QueueItem, direction: QueueMoveDirection) => void;
   onOwnerRemoveQueueItem: (item: QueueItem) => void;
 };
 
@@ -26,6 +29,7 @@ export function QueueCard({
   isRoomClosed,
   isOwner,
   isChangingQueue,
+  onOwnerMoveQueueItem,
   onOwnerRemoveQueueItem,
 }: QueueCardProps) {
   return (
@@ -56,6 +60,8 @@ export function QueueCard({
         waitingQueue.map((item, index) => {
           const member = membersById[item.member_id];
           const isThisMe = item.member_id === currentMemberId;
+          const isFirst = index === 0;
+          const isLast = index === waitingQueue.length - 1;
 
           return (
             <View key={item.id} style={styles.queueItem}>
@@ -71,13 +77,31 @@ export function QueueCard({
               {isThisMe && <Text style={styles.youBadge}>Você</Text>}
 
               {isOwner && (
-                <AppButton
-                  title="Remover"
-                  variant="dangerOutline"
-                  size="small"
-                  disabled={isChangingQueue || isRoomClosed}
-                  onPress={() => onOwnerRemoveQueueItem(item)}
-                />
+                <View style={styles.queueAdminActions}>
+                  <AppButton
+                    title="↑"
+                    variant="secondary"
+                    size="small"
+                    disabled={isChangingQueue || isRoomClosed || isFirst}
+                    onPress={() => onOwnerMoveQueueItem(item, 'up')}
+                  />
+
+                  <AppButton
+                    title="↓"
+                    variant="secondary"
+                    size="small"
+                    disabled={isChangingQueue || isRoomClosed || isLast}
+                    onPress={() => onOwnerMoveQueueItem(item, 'down')}
+                  />
+
+                  <AppButton
+                    title="Remover"
+                    variant="dangerOutline"
+                    size="small"
+                    disabled={isChangingQueue || isRoomClosed}
+                    onPress={() => onOwnerRemoveQueueItem(item)}
+                  />
+                </View>
               )}
             </View>
           );

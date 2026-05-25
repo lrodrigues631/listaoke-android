@@ -65,30 +65,24 @@ export async function createOwnerMember({
 
 export async function createGuestMember({
   roomId,
-  userId,
   name,
 }: CreateGuestMemberParams): Promise<RoomMember> {
-  const { data, error } = await supabase
-    .from('room_members')
-    .insert({
-      room_id: roomId,
-      user_id: userId,
-      name,
-      role: 'guest',
-      status: 'active',
-    })
-    .select('id, room_id, user_id, name, role, status, created_at, left_at')
-    .single();
+  const { data, error } = await supabase.rpc('join_room_member', {
+    p_room_id: roomId,
+    p_name: name,
+  });
 
   if (error) {
     throw new Error(`Não consegui colocar você na sala: ${error.message}`);
   }
 
-  if (!data) {
+  const memberData = Array.isArray(data) ? data[0] : data;
+
+  if (!memberData) {
     throw new Error('Você entrou na sala, mas o Supabase não retornou seus dados.');
   }
 
-  return data as RoomMember;
+  return memberData as RoomMember;
 }
 
 export async function findActiveMemberByRoomAndUser({

@@ -12,6 +12,13 @@ type OwnerRemoveQueueItemParams = {
   targetQueueItemId: string;
 };
 
+type OwnerMoveQueueItemParams = {
+  roomId: string;
+  actorMemberId: string;
+  targetQueueItemId: string;
+  direction: 'up' | 'down';
+};
+
 export async function listActiveQueueItemsByRoom(roomId: string): Promise<QueueItem[]> {
   const { data, error } = await supabase
     .from('queue_items')
@@ -96,5 +103,23 @@ export async function ownerRemoveQueueItemRpc({
 
   if (error) {
     throw new Error(`Não consegui remover da fila: ${error.message}`);
+  }
+}
+
+export async function ownerMoveQueueItemRpc({
+  roomId,
+  actorMemberId,
+  targetQueueItemId,
+  direction,
+}: OwnerMoveQueueItemParams): Promise<void> {
+  const { error } = await supabase.rpc('queue_owner_move_item', {
+    p_room_id: roomId,
+    p_actor_member_id: actorMemberId,
+    p_target_queue_item_id: targetQueueItemId,
+    p_direction: direction,
+  });
+
+  if (error) {
+    throw new Error(`Não consegui mover na fila: ${error.message}`);
   }
 }

@@ -4,6 +4,7 @@ import {
   leaveOwnQueueRpc,
   listActiveQueueItemsByRoom,
   moveOwnTurnDownRpc,
+  ownerMoveQueueItemRpc,
   ownerRemoveQueueItemRpc,
   skipOwnTurnRpc,
 } from '../models/queueModel';
@@ -70,5 +71,23 @@ export async function ownerRemoveFromQueue(
     roomId,
     actorMemberId,
     targetQueueItemId,
+  });
+}
+
+export async function ownerMoveQueueItem(
+  roomId: string,
+  actorMemberId: string,
+  targetQueueItemId: string,
+  direction: 'up' | 'down'
+): Promise<void> {
+  if (!roomId || !actorMemberId || !targetQueueItemId || !direction) {
+    throw new Error('Não consegui identificar sala, dono, item da fila ou direção.');
+  }
+
+  await ownerMoveQueueItemRpc({
+    roomId,
+    actorMemberId,
+    targetQueueItemId,
+    direction,
   });
 }
