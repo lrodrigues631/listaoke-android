@@ -1,16 +1,26 @@
 import type { Meta, StoryObj } from '@storybook/react-native';
 import { StyleSheet, View } from 'react-native';
 
+import { theme } from '../../src/constants/theme';
 import { StorybookScreen } from '../../src/storybook/decorators/StorybookScreen';
 import { AdminCard } from '../../src/views/components/room/AdminCard';
 
 const baseArgs = {
   transferableCount: 2,
   removableCount: 3,
+  waitingCount: 4,
+  hasCurrentSinger: true,
+  isChangingQueue: false,
   isCopyingInvite: false,
   isClosingRoom: false,
-  onCopyInvite: () => console.log('Mock: copiar convite'),
-  onCloseRoom: () => console.log('Mock: fechar sala'),
+  onCopyInvite: () => console.log('Mock: compartilhar convite'),
+  onCloseRoom: () => console.log('Mock: encerrar sala'),
+  onAddManualQueueItem: (name: string) => console.log('Mock: adicionar cantor', name),
+  onFinishCurrentTurn: () => console.log('Mock: finalizar vez'),
+  onCallNext: () => console.log('Mock visual: chamar proximo'),
+  onViewQueue: () => console.log('Mock visual: ver fila'),
+  onViewMembers: () => console.log('Mock visual: ver membros'),
+  onViewHistory: () => console.log('Mock visual: ver historico'),
 };
 
 const meta = {
@@ -31,6 +41,15 @@ const meta = {
     removableCount: {
       control: 'number',
     },
+    waitingCount: {
+      control: 'number',
+    },
+    hasCurrentSinger: {
+      control: 'boolean',
+    },
+    isChangingQueue: {
+      control: 'boolean',
+    },
     isCopyingInvite: {
       control: 'boolean',
     },
@@ -45,65 +64,70 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
-  name: 'Controle padrão',
+  name: 'Padrão',
   args: {
     ...baseArgs,
-    transferableCount: 2,
-    removableCount: 3,
   },
 };
 
-export const OwnerAlone: Story = {
-  name: 'Dono sozinho na sala',
+export const EmptyQueue: Story = {
+  name: 'Fila vazia',
   args: {
     ...baseArgs,
-    transferableCount: 0,
-    removableCount: 0,
+    waitingCount: 0,
   },
 };
 
-export const CanOnlyRemove: Story = {
-  name: 'Só pode remover pessoas',
+export const WithSingerOnStage: Story = {
+  name: 'Pessoa no palco',
   args: {
     ...baseArgs,
-    transferableCount: 0,
-    removableCount: 2,
+    hasCurrentSinger: true,
   },
 };
 
-export const CanTransferAndRemove: Story = {
-  name: 'Pode transferir e remover',
+export const WithoutSingerOnStage: Story = {
+  name: 'Sem pessoa no palco',
   args: {
     ...baseArgs,
-    transferableCount: 3,
-    removableCount: 3,
+    hasCurrentSinger: false,
+    onFinishCurrentTurn: undefined,
   },
 };
 
-export const CopyingInvite: Story = {
-  name: 'Copiando convite',
+export const AddSingerSheet: Story = {
+  name: 'Bottom sheet adicionar participante',
   args: {
     ...baseArgs,
-    isCopyingInvite: true,
-    isClosingRoom: false,
+    initialSheet: 'addSinger',
   },
 };
 
-export const ClosingRoom: Story = {
-  name: 'Fechando sala',
+export const CloseRoomConfirm: Story = {
+  name: 'Confirmação de encerrar sala',
   args: {
     ...baseArgs,
-    isCopyingInvite: false,
-    isClosingRoom: true,
+    initialSheet: 'closeRoom',
   },
 };
 
-export const BusyState: Story = {
-  name: 'Copiando e fechando',
+export const LoadingPrimaryAction: Story = {
+  name: 'Loading em ação principal',
   args: {
     ...baseArgs,
-    isCopyingInvite: true,
-    isClosingRoom: true,
+    isChangingQueue: true,
+  },
+};
+
+export const DisabledAction: Story = {
+  name: 'Ação indisponível',
+  args: {
+    ...baseArgs,
+    waitingCount: 0,
+    hasCurrentSinger: false,
+    onAddManualQueueItem: undefined,
+    onFinishCurrentTurn: undefined,
+    onCallNext: undefined,
   },
 };
 
@@ -111,49 +135,21 @@ export const AllAdminStates: Story = {
   name: 'Todos os estados principais',
   render: () => (
     <View style={styles.stack}>
-      <AdminCard
-        transferableCount={2}
-        removableCount={3}
-        isCopyingInvite={false}
-        isClosingRoom={false}
-        onCopyInvite={() => console.log('Mock: copiar convite padrão')}
-        onCloseRoom={() => console.log('Mock: fechar sala padrão')}
-      />
+      <AdminCard {...baseArgs} />
+
+      <AdminCard {...baseArgs} waitingCount={0} />
+
+      <AdminCard {...baseArgs} hasCurrentSinger={false} onFinishCurrentTurn={undefined} />
+
+      <AdminCard {...baseArgs} isChangingQueue />
 
       <AdminCard
-        transferableCount={0}
-        removableCount={0}
-        isCopyingInvite={false}
-        isClosingRoom={false}
-        onCopyInvite={() => console.log('Mock: copiar convite dono sozinho')}
-        onCloseRoom={() => console.log('Mock: fechar sala dono sozinho')}
-      />
-
-      <AdminCard
-        transferableCount={0}
-        removableCount={2}
-        isCopyingInvite={false}
-        isClosingRoom={false}
-        onCopyInvite={() => console.log('Mock: copiar convite só remover')}
-        onCloseRoom={() => console.log('Mock: fechar sala só remover')}
-      />
-
-      <AdminCard
-        transferableCount={3}
-        removableCount={3}
-        isCopyingInvite
-        isClosingRoom={false}
-        onCopyInvite={() => console.log('Mock: copiando convite')}
-        onCloseRoom={() => console.log('Mock: fechar sala')}
-      />
-
-      <AdminCard
-        transferableCount={3}
-        removableCount={3}
-        isCopyingInvite={false}
-        isClosingRoom
-        onCopyInvite={() => console.log('Mock: copiar convite')}
-        onCloseRoom={() => console.log('Mock: fechando sala')}
+        {...baseArgs}
+        waitingCount={0}
+        hasCurrentSinger={false}
+        onAddManualQueueItem={undefined}
+        onFinishCurrentTurn={undefined}
+        onCallNext={undefined}
       />
     </View>
   ),
@@ -161,6 +157,6 @@ export const AllAdminStates: Story = {
 
 const styles = StyleSheet.create({
   stack: {
-    gap: 16,
+    gap: theme.spacing.lg,
   },
 });

@@ -8,16 +8,16 @@ const meta = {
   component: RoomHeader,
   decorators: [
     (Story) => (
-      <StorybookScreen withCard>
+      <StorybookScreen>
         <Story />
       </StorybookScreen>
     ),
   ],
   args: {
-    roomName: 'Noite do Karaokê',
-    roomCode: 'LK82P',
+    roomName: 'Noite do Karaoke',
+    roomCode: '0427',
     roomStatus: 'open',
-    onCopyCode: () => console.log('Código copiado no Storybook'),
+    onCopyCode: () => console.log('Codigo copiado no Storybook'),
   },
   argTypes: {
     roomName: {
@@ -36,6 +36,9 @@ const meta = {
     isRoomClosed: {
       control: 'boolean',
     },
+    isOwner: {
+      control: 'boolean',
+    },
   },
 } satisfies Meta<typeof RoomHeader>;
 
@@ -43,55 +46,64 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-export const ActiveRoom: Story = {
-  name: 'Sala ativa',
+export const Guest: Story = {
+  name: 'Convidado',
   args: {
-    roomName: 'Noite do Karaokê',
-    roomCode: 'LK82P',
+    roomName: 'Noite do Karaoke',
+    roomCode: '0427',
     roomStatus: 'open',
     statusLabel: 'Sala ativa',
     isRoomClosed: false,
+    isOwner: false,
   },
 };
 
-export const ClosedRoom: Story = {
-  name: 'Sala encerrada',
-  args: {
-    roomName: 'Noite do Karaokê',
-    roomCode: 'LK82P',
-    roomStatus: 'closed',
-    statusLabel: 'Sala encerrada',
-    isRoomClosed: true,
-  },
-};
-
-export const CopyableCode: Story = {
-  name: 'Código copiável',
+export const Owner: Story = {
+  name: 'Dono',
   args: {
     roomName: 'Sextou no Microfone',
     roomCode: 'CANTA7',
     roomStatus: 'open',
     statusLabel: 'Sala ativa',
-    onCopyCode: () => console.log('Mock: código CANTA7 copiado'),
+    isRoomClosed: false,
+    isOwner: true,
+    onCopyInvite: () => console.log('Mock: compartilhar convite'),
+    onCopyCode: () => console.log('Mock: codigo CANTA7 copiado'),
   },
 };
 
-export const WithoutCode: Story = {
-  name: 'Sem código visível',
+export const ShortCode: Story = {
+  name: 'Codigo curto',
   args: {
-    roomName: 'Sala privada',
-    roomCode: '',
+    roomName: 'Sala da turma',
+    roomCode: '8421',
     roomStatus: 'open',
     statusLabel: 'Sala ativa',
+    isOwner: true,
+    onCopyInvite: () => console.log('Mock: compartilhar convite'),
   },
 };
 
 export const LongRoomName: Story = {
   name: 'Nome de sala grande',
   args: {
-    roomName: 'Aniversário da Firma com Pagode, Sertanejo e Clássicos Duvidosos',
+    roomName: 'Aniversario da Firma com Pagode, Sertanejo e Classicos Duvidosos',
     roomCode: 'FESTA9',
     roomStatus: 'open',
     statusLabel: 'Sala ativa',
+    isOwner: true,
+    onCopyInvite: () => console.log('Mock: compartilhar convite'),
+  },
+};
+
+export const ClosedRoom: Story = {
+  name: 'Sala encerrada',
+  args: {
+    roomName: 'Noite do Karaoke',
+    roomCode: '0427',
+    roomStatus: 'closed',
+    statusLabel: 'Sala encerrada',
+    isRoomClosed: true,
+    isOwner: true,
   },
 };

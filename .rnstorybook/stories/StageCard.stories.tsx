@@ -105,11 +105,22 @@ export const EmptyStage: Story = {
 };
 
 export const SomeoneSinging: Story = {
-  name: 'Alguém cantando',
+  name: 'Com cantor',
   args: {
     ...baseArgs,
     currentOnStage: currentOnStageItem,
     currentOnStageMember: anaMember,
+  },
+};
+
+export const GuestReadOnly: Story = {
+  name: 'Convidado somente leitura',
+  args: {
+    ...baseArgs,
+    currentOnStage: currentOnStageItem,
+    currentOnStageMember: anaMember,
+    isOwner: false,
+    isMeOnStage: false,
   },
 };
 
@@ -124,7 +135,7 @@ export const MeSinging: Story = {
 };
 
 export const OwnerWatchingSomeoneSinging: Story = {
-  name: 'Dono vendo outra pessoa cantar',
+  name: 'Dono com ação',
   args: {
     ...baseArgs,
     currentOnStage: createQueueItem({
@@ -135,6 +146,16 @@ export const OwnerWatchingSomeoneSinging: Story = {
     }),
     currentOnStageMember: brunoMember,
     isOwner: true,
+  },
+};
+
+export const GlowActive: Story = {
+  name: 'Glow ativo',
+  args: {
+    ...baseArgs,
+    currentOnStage: currentOnStageItem,
+    currentOnStageMember: anaMember,
+    isChangingQueue: true,
   },
 };
 

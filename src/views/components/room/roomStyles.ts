@@ -3,6 +3,10 @@ import { StyleSheet } from 'react-native';
 import { colors } from '../../../constants/colors';
 
 export const roomStyles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
   container: {
     flexGrow: 1,
     backgroundColor: colors.background,

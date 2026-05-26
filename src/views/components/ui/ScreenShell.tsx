@@ -1,8 +1,9 @@
 import { ScrollView, StyleSheet, View } from 'react-native';
 import type { ReactNode } from 'react';
 import type { StyleProp, ViewStyle } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { colors } from '../../../constants/colors';
+import { theme } from '../../../constants/theme';
 
 type ScreenShellProps = {
   children: ReactNode;
@@ -12,32 +13,49 @@ type ScreenShellProps = {
 
 export function ScreenShell({ children, scroll = true, contentStyle }: ScreenShellProps) {
   if (!scroll) {
-    return <View style={[styles.fullScreen, contentStyle]}>{children}</View>;
+    return (
+      <SafeAreaView edges={['top', 'bottom']} style={styles.screen}>
+        <View style={[styles.fullScreen, contentStyle]}>{children}</View>
+      </SafeAreaView>
+    );
   }
 
   return (
-    <ScrollView
-      contentContainerStyle={[styles.container, contentStyle]}
-      keyboardShouldPersistTaps="handled"
-    >
-      {children}
-    </ScrollView>
+    <SafeAreaView edges={['top', 'bottom']} style={styles.screen}>
+      <ScrollView
+        contentInsetAdjustmentBehavior="automatic"
+        style={styles.scroll}
+        contentContainerStyle={[styles.container, contentStyle]}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        {children}
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: theme.colors.background,
+  },
+  scroll: {
+    flex: 1,
+    backgroundColor: theme.colors.background,
+  },
   container: {
     flexGrow: 1,
-    backgroundColor: colors.background,
-    paddingHorizontal: 20,
-    paddingTop: 44,
-    paddingBottom: 24,
+    backgroundColor: theme.colors.background,
+    paddingHorizontal: theme.spacing.xl,
+    paddingTop: theme.spacing.xxl,
+    paddingBottom: theme.spacing.xxl,
   },
   fullScreen: {
     flex: 1,
-    backgroundColor: colors.background,
-    paddingHorizontal: 20,
-    paddingTop: 44,
-    paddingBottom: 24,
+    backgroundColor: theme.colors.background,
+    paddingHorizontal: theme.spacing.xl,
+    paddingTop: theme.spacing.xxl,
+    paddingBottom: theme.spacing.xxl,
   },
 });

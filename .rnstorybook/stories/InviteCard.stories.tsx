@@ -1,14 +1,15 @@
 import type { Meta, StoryObj } from '@storybook/react-native';
 import { StyleSheet, View } from 'react-native';
 
+import { theme } from '../../src/constants/theme';
 import { StorybookScreen } from '../../src/storybook/decorators/StorybookScreen';
 import { InviteCard } from '../../src/views/components/room/InviteCard';
 
 const baseArgs = {
-  roomCode: 'LK82P',
+  roomCode: '0427',
   isCopyingInvite: false,
-  onCopyInvite: () => console.log('Mock: copiar convite'),
-  onCopyCode: () => console.log('Mock: copiar código'),
+  onCopyInvite: () => console.log('Mock: compartilhar convite'),
+  onCopyCode: () => console.log('Mock: copiar codigo'),
 };
 
 const meta = {
@@ -37,34 +38,25 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
-  name: 'Convite padrão',
+  name: 'Padrao',
   args: {
     ...baseArgs,
-    roomCode: 'LK82P',
   },
 };
 
-export const LongCode: Story = {
-  name: 'Código maior',
+export const ShareAction: Story = {
+  name: 'Com acao de compartilhar',
   args: {
     ...baseArgs,
     roomCode: 'CANTA7',
-  },
-};
-
-export const ShortCode: Story = {
-  name: 'Código curto',
-  args: {
-    ...baseArgs,
-    roomCode: 'A1B2',
+    onCopyInvite: () => console.log('Mock: convite CANTA7 compartilhado'),
   },
 };
 
 export const CopyingInvite: Story = {
-  name: 'Copiando convite',
+  name: 'Compartilhando convite',
   args: {
     ...baseArgs,
-    roomCode: 'LK82P',
     isCopyingInvite: true,
   },
 };
@@ -74,31 +66,24 @@ export const AllInviteStates: Story = {
   render: () => (
     <View style={styles.stack}>
       <InviteCard
-        roomCode="LK82P"
+        roomCode="0427"
         isCopyingInvite={false}
-        onCopyInvite={() => console.log('Mock: copiar convite LK82P')}
-        onCopyCode={() => console.log('Mock: copiar código LK82P')}
+        onCopyInvite={() => console.log('Mock: compartilhar convite 0427')}
+        onCopyCode={() => console.log('Mock: copiar codigo 0427')}
       />
 
       <InviteCard
         roomCode="CANTA7"
         isCopyingInvite={false}
-        onCopyInvite={() => console.log('Mock: copiar convite CANTA7')}
-        onCopyCode={() => console.log('Mock: copiar código CANTA7')}
+        onCopyInvite={() => console.log('Mock: compartilhar convite CANTA7')}
+        onCopyCode={() => console.log('Mock: copiar codigo CANTA7')}
       />
 
       <InviteCard
-        roomCode="A1B2"
-        isCopyingInvite={false}
-        onCopyInvite={() => console.log('Mock: copiar convite A1B2')}
-        onCopyCode={() => console.log('Mock: copiar código A1B2')}
-      />
-
-      <InviteCard
-        roomCode="LK82P"
+        roomCode="8421"
         isCopyingInvite
-        onCopyInvite={() => console.log('Mock: copiando convite')}
-        onCopyCode={() => console.log('Mock: copiando código')}
+        onCopyInvite={() => console.log('Mock: compartilhando convite')}
+        onCopyCode={() => console.log('Mock: copiando codigo')}
       />
     </View>
   ),
@@ -106,6 +91,6 @@ export const AllInviteStates: Story = {
 
 const styles = StyleSheet.create({
   stack: {
-    gap: 16,
+    gap: theme.spacing.lg,
   },
 });

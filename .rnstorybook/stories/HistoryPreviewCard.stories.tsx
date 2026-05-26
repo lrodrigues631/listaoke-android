@@ -58,7 +58,7 @@ export const EmptyHistory: Story = {
 };
 
 export const TwoRecentEvents: Story = {
-  name: '2 eventos recentes',
+  name: 'Curto',
   args: {
     ...baseArgs,
     events: recentEvents,
@@ -76,10 +76,23 @@ export const CollapsedHistory: Story = {
 };
 
 export const ExpandedHistory: Story = {
-  name: 'Histórico expandido',
+  name: 'Longo',
   args: {
     ...baseArgs,
     events: manyEvents,
+    isExpanded: true,
+  },
+};
+
+export const RepeatedParticipant: Story = {
+  name: 'Participante repetido',
+  args: {
+    ...baseArgs,
+    events: manyEvents.map((event, index) => ({
+      ...event,
+      id: `repeated-${index}`,
+      message: index % 2 === 0 ? 'Ana cantou e voltou para o fim da fila.' : 'Ana entrou na fila.',
+    })),
     isExpanded: true,
   },
 };

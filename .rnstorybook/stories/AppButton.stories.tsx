@@ -25,7 +25,7 @@ const meta = {
     },
     size: {
       control: 'select',
-      options: ['default', 'small'],
+      options: ['default', 'small', 'compact'],
     },
     disabled: {
       control: 'boolean',
@@ -83,6 +83,14 @@ export const Small: Story = {
     title: 'Pequeno',
     variant: 'secondary',
     size: 'small',
+  },
+};
+
+export const Compact: Story = {
+  args: {
+    title: 'Copiar codigo',
+    variant: 'secondary',
+    size: 'compact',
   },
 };
 
@@ -150,6 +158,13 @@ export const AllVariants: Story = {
       />
 
       <View style={styles.smallRow}>
+        <AppButton
+          title="Compacto"
+          variant="secondary"
+          size="compact"
+          onPress={() => console.log('Compact secondary')}
+        />
+
         <AppButton
           title="Pequeno"
           variant="secondary"

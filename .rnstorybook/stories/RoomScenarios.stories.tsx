@@ -4,6 +4,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { colors } from '../../src/constants/colors';
 import {
   buildMembersById,
+  createQueueItem,
   emptySummary,
   finalSummary,
   formatMockMessage,
@@ -77,6 +78,27 @@ const mockActions = {
     console.log('Mock: remover do palco', item),
 };
 
+const guestInThirdPositionQueue = [
+  createQueueItem({
+    id: 'queue-ana-first',
+    member_id: 'member-ana',
+    status: 'waiting',
+    position: 1,
+  }),
+  createQueueItem({
+    id: 'queue-bruno-second',
+    member_id: 'member-bruno',
+    status: 'waiting',
+    position: 2,
+  }),
+  createQueueItem({
+    id: 'queue-current-third',
+    member_id: 'member-current',
+    status: 'waiting',
+    position: 3,
+  }),
+];
+
 function RoomScenario({
   title,
   roomStatus,
@@ -139,20 +161,100 @@ function RoomScenario({
       isOwner={isOwner}
       isRoomClosed={isRoomClosed}
       isChangingMember={false}
+      currentOnStageMemberId={currentOnStage?.member_id ?? null}
+      queuedMemberIds={waitingQueue.map((item) => item.member_id)}
       onTransferOwnership={mockActions.onTransferOwnership}
       onRemoveMember={mockActions.onRemoveMember}
     />
   );
 
+  const stageCard = (
+    <StageCard
+      currentOnStage={currentOnStage}
+      currentOnStageMember={currentOnStageMember}
+      isLoadingRoom={isLoading}
+      isLoadingQueue={isLoading}
+      isRoomClosed={isRoomClosed}
+      isMeOnStage={isMeOnStage}
+      isOwner={isOwner}
+      isChangingQueue={false}
+      wasRemovedFromRoom={wasRemovedFromRoom}
+      onFinishTurn={mockActions.onFinishTurn}
+      onSkipTurn={mockActions.onSkipTurn}
+      onStopSinging={mockActions.onStopSinging}
+      onOwnerFinishTurn={mockActions.onOwnerFinishTurn}
+      onOwnerSkipTurn={mockActions.onOwnerSkipTurn}
+      onOwnerRemoveFromStage={mockActions.onOwnerRemoveFromStage}
+    />
+  );
+
+  const myParticipationCard = (
+    <MyParticipationCard
+      isRoomClosed={isRoomClosed}
+      wasRemovedFromRoom={wasRemovedFromRoom}
+      isMeOnStage={isMeOnStage}
+      isMeWaiting={isMeWaiting}
+      queuePosition={myQueuePosition}
+      isChangingQueue={false}
+      canMoveMyTurnDown={canMoveMyTurnDown}
+      onFinishTurn={mockActions.onFinishTurn}
+      onSkipTurn={mockActions.onSkipTurn}
+      onStopSinging={mockActions.onStopSinging}
+      onMoveTurnDown={mockActions.onMoveTurnDown}
+      onLeaveQueue={mockActions.onLeaveQueue}
+      onJoinQueue={mockActions.onJoinQueue}
+    />
+  );
+
+  const adminCard = isOwner ? (
+    <AdminCard
+      transferableCount={transferableMembers.length}
+      removableCount={removableMembers.length}
+      isCopyingInvite={false}
+      isClosingRoom={false}
+      waitingCount={waitingQueue.length}
+      hasCurrentSinger={Boolean(currentOnStage)}
+      isChangingQueue={false}
+      onCopyInvite={mockActions.onCopyInvite}
+      onCloseRoom={mockActions.onCloseRoom}
+      onAddManualQueueItem={mockActions.onOwnerAddManualQueueItem}
+      onFinishCurrentTurn={
+        currentOnStage ? () => mockActions.onOwnerFinishTurn(currentOnStage) : undefined
+      }
+    />
+  ) : null;
+
+  const queueCard = (
+    <QueueCard
+      waitingQueue={waitingQueue}
+      membersById={membersById}
+      currentMemberId={currentMemberId}
+      isLoadingQueue={isLoading}
+      queueError={queueError}
+      isRoomClosed={isRoomClosed}
+      isOwner={isOwner}
+      isChangingQueue={false}
+      onOwnerAddManualQueueItem={mockActions.onOwnerAddManualQueueItem}
+      onOwnerMoveQueueItem={mockActions.onOwnerMoveQueueItem}
+      onOwnerRemoveQueueItem={mockActions.onOwnerRemoveQueueItem}
+    />
+  );
+
   return (
-    <ScrollView contentContainerStyle={roomStyles.container}>
+    <ScrollView
+      contentInsetAdjustmentBehavior="automatic"
+      contentContainerStyle={roomStyles.container}
+      showsVerticalScrollIndicator={false}
+    >
       <Text style={styles.scenarioLabel}>{title}</Text>
 
       <RoomHeader
         roomName="Noite do Karaokê"
         roomCode="LK82P"
         isRoomClosed={isRoomClosed}
+        isOwner={isOwner}
         onCopyCode={mockActions.onCopyCode}
+        onCopyInvite={isOwner ? mockActions.onCopyInvite : undefined}
       />
 
       {roomError ? <Text style={roomStyles.errorText}>{roomError}</Text> : null}
@@ -180,67 +282,24 @@ function RoomScenario({
             </View>
           ) : null}
 
-          <StageCard
-            currentOnStage={currentOnStage}
-            currentOnStageMember={currentOnStageMember}
-            isLoadingRoom={isLoading}
-            isLoadingQueue={isLoading}
-            isRoomClosed={isRoomClosed}
-            isMeOnStage={isMeOnStage}
-            isOwner={isOwner}
-            isChangingQueue={false}
-            wasRemovedFromRoom={wasRemovedFromRoom}
-            onFinishTurn={mockActions.onFinishTurn}
-            onSkipTurn={mockActions.onSkipTurn}
-            onStopSinging={mockActions.onStopSinging}
-            onOwnerFinishTurn={mockActions.onOwnerFinishTurn}
-            onOwnerSkipTurn={mockActions.onOwnerSkipTurn}
-            onOwnerRemoveFromStage={mockActions.onOwnerRemoveFromStage}
-          />
-
-          <MyParticipationCard
-            isRoomClosed={isRoomClosed}
-            wasRemovedFromRoom={wasRemovedFromRoom}
-            isMeOnStage={isMeOnStage}
-            isMeWaiting={isMeWaiting}
-            queuePosition={myQueuePosition}
-            isChangingQueue={false}
-            canMoveMyTurnDown={canMoveMyTurnDown}
-            onFinishTurn={mockActions.onFinishTurn}
-            onSkipTurn={mockActions.onSkipTurn}
-            onStopSinging={mockActions.onStopSinging}
-            onMoveTurnDown={mockActions.onMoveTurnDown}
-            onLeaveQueue={mockActions.onLeaveQueue}
-            onJoinQueue={mockActions.onJoinQueue}
-          />
-
           {isOwner ? (
-            <AdminCard
-              transferableCount={transferableMembers.length}
-              removableCount={removableMembers.length}
-              isCopyingInvite={false}
-              isClosingRoom={false}
-              onCopyInvite={mockActions.onCopyInvite}
-              onCloseRoom={mockActions.onCloseRoom}
-            />
-          ) : null}
-
-          <QueueCard
-            waitingQueue={waitingQueue}
-            membersById={membersById}
-            currentMemberId={currentMemberId}
-            isLoadingQueue={isLoading}
-            queueError={queueError}
-            isRoomClosed={isRoomClosed}
-            isOwner={isOwner}
-            isChangingQueue={false}
-            onOwnerAddManualQueueItem={mockActions.onOwnerAddManualQueueItem}
-            onOwnerMoveQueueItem={mockActions.onOwnerMoveQueueItem}
-            onOwnerRemoveQueueItem={mockActions.onOwnerRemoveQueueItem}
-          />
-
-          {membersCard}
-          {historyCard}
+            <>
+              {stageCard}
+              {adminCard}
+              {queueCard}
+              {myParticipationCard}
+              {membersCard}
+              {historyCard}
+            </>
+          ) : (
+            <>
+              {stageCard}
+              {myParticipationCard}
+              {queueCard}
+              {historyCard}
+              {membersCard}
+            </>
+          )}
         </>
       )}
 
@@ -300,9 +359,24 @@ export const GuestOutsideQueue: Story = {
 };
 
 export const GuestWaiting: Story = {
-  name: 'Convidado esperando',
+  name: 'Convidado na fila',
   args: {
-    title: 'Sala como convidado esperando',
+    title: 'Sala como convidado na fila',
+    roomStatus: 'open',
+    currentMemberId: 'member-current',
+    isOwner: false,
+    currentOnStage: null,
+    queueItems: guestInThirdPositionQueue,
+    members: fullMembers,
+    events: roomScenarioEvents,
+    summary: emptySummary,
+  },
+};
+
+export const GuestNext: Story = {
+  name: 'Convidado próximo',
+  args: {
+    title: 'Sala como convidado próximo',
     roomStatus: 'open',
     currentMemberId: 'member-current',
     isOwner: false,
@@ -315,7 +389,7 @@ export const GuestWaiting: Story = {
 };
 
 export const GuestOnStage: Story = {
-  name: 'Usuário no palco',
+  name: 'Convidado no palco',
   args: {
     title: 'Sala com usuário atual no palco',
     roomStatus: 'open',
@@ -330,7 +404,7 @@ export const GuestOnStage: Story = {
 };
 
 export const OwnerManagingRoom: Story = {
-  name: 'Dono gerenciando sala',
+  name: 'Dono com pessoa no palco',
   args: {
     title: 'Sala como dono gerenciando fila',
     roomStatus: 'open',
@@ -338,6 +412,36 @@ export const OwnerManagingRoom: Story = {
     isOwner: true,
     currentOnStage: ownerQueue[0],
     queueItems: ownerQueue,
+    members: fullMembers,
+    events: roomScenarioEvents,
+    summary: emptySummary,
+  },
+};
+
+export const OwnerNoSinger: Story = {
+  name: 'Dono sem pessoa no palco',
+  args: {
+    title: 'Sala como dono sem pessoa no palco',
+    roomStatus: 'open',
+    currentMemberId: 'member-owner',
+    isOwner: true,
+    currentOnStage: null,
+    queueItems: ownerQueue.filter((item) => item.status === 'waiting'),
+    members: fullMembers,
+    events: roomScenarioEvents,
+    summary: emptySummary,
+  },
+};
+
+export const OwnerEmptyQueue: Story = {
+  name: 'Dono com fila vazia',
+  args: {
+    title: 'Sala como dono com fila vazia',
+    roomStatus: 'open',
+    currentMemberId: 'member-owner',
+    isOwner: true,
+    currentOnStage: null,
+    queueItems: [],
     members: fullMembers,
     events: roomScenarioEvents,
     summary: emptySummary,

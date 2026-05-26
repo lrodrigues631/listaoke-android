@@ -75,7 +75,7 @@ export const OutsideQueue: Story = {
 };
 
 export const WaitingFirstPosition: Story = {
-  name: 'Usuário esperando em primeiro',
+  name: 'Próximo',
   args: {
     ...baseArgs,
     isMeWaiting: true,
@@ -85,13 +85,13 @@ export const WaitingFirstPosition: Story = {
   },
 };
 
-export const WaitingMiddlePosition: Story = {
-  name: 'Usuário esperando no meio da fila',
+export const WaitingThirdPosition: Story = {
+  name: 'Na fila em 3º',
   args: {
     ...baseArgs,
     isMeWaiting: true,
     isMeOnStage: false,
-    queuePosition: 4,
+    queuePosition: 3,
     canMoveMyTurnDown: true,
   },
 };
@@ -140,7 +140,7 @@ export const ClosedRoom: Story = {
 };
 
 export const ChangingQueueOutside: Story = {
-  name: 'Entrando na fila com loading',
+  name: 'Loading',
   args: {
     ...baseArgs,
     isChangingQueue: true,

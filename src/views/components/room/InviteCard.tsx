@@ -1,6 +1,9 @@
-import { ActivityIndicator, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
-import { colors } from '../../../constants/colors';
+import { theme } from '../../../constants/theme';
+import { AppButton } from '../ui/AppButton';
+import { AppCard } from '../ui/AppCard';
+import { RoomCodeChip } from '../ui/RoomCodeChip';
 
 type InviteCardProps = {
   roomCode: string;
@@ -16,103 +19,77 @@ export function InviteCard({
   isCopyingInvite,
 }: InviteCardProps) {
   return (
-    <View style={styles.card}>
+    <AppCard variant="accent" style={styles.card}>
       <View style={styles.headerRow}>
-        <Text style={styles.label}>Convite</Text>
-        <Text style={styles.hint}>Toque no código para copiar</Text>
+        <View style={styles.headerCopy}>
+          <Text style={styles.label}>Convite</Text>
+          <Text accessibilityRole="header" style={styles.title}>
+            Chame a turma
+          </Text>
+        </View>
+
+        <RoomCodeChip
+          code={roomCode}
+          compact
+          highlighted
+          accessibilityLabel={`Código da sala ${roomCode}. Toque para copiar.`}
+          onPress={onCopyCode}
+        />
       </View>
 
-      <Pressable
-        disabled={isCopyingInvite}
-        onPress={onCopyCode}
-        style={({ pressed }) => [
-          styles.codeBox,
-          pressed && styles.codeBoxPressed,
-          isCopyingInvite && styles.disabled,
-        ]}
-      >
-        <Text style={styles.code}>{roomCode}</Text>
-      </Pressable>
-
       <Text style={styles.text}>
-        Compartilhe o convite com a turma. O código também copia direto tocando nele.
+        O código fica fácil de copiar e o convite pronto para mandar no grupo.
       </Text>
 
-      <TouchableOpacity
-        disabled={isCopyingInvite}
-        style={[styles.primaryButton, isCopyingInvite && styles.disabled]}
-        onPress={onCopyInvite}
-      >
-        {isCopyingInvite ? (
-          <ActivityIndicator color={colors.background} />
-        ) : (
-          <Text style={styles.primaryButtonText}>Copiar convite</Text>
-        )}
-      </TouchableOpacity>
-    </View>
+      <View style={styles.actions}>
+        <AppButton
+          title="Compartilhar convite"
+          accessibilityHint="Copia ou compartilha o convite da sala."
+          loading={isCopyingInvite}
+          disabled={isCopyingInvite}
+          onPress={onCopyInvite}
+        />
+
+        <AppButton
+          title="Copiar código"
+          accessibilityLabel="Copiar código da sala"
+          variant="ghost"
+          disabled={isCopyingInvite}
+          onPress={onCopyCode}
+        />
+      </View>
+    </AppCard>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: colors.accentMuted,
-    borderRadius: 28,
-    padding: 22,
-    gap: 14,
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: theme.colors.borderStrong,
   },
   headerRow: {
-    gap: 4,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: theme.spacing.md,
+  },
+  headerCopy: {
+    flex: 1,
+    gap: 3,
   },
   label: {
-    color: colors.textSoft,
-    fontSize: 13,
-    fontWeight: '900',
-    letterSpacing: 1.4,
+    color: theme.colors.primary,
     textTransform: 'uppercase',
+    ...theme.typography.label,
   },
-  hint: {
-    color: colors.textMuted,
-    fontSize: 13,
-  },
-  codeBox: {
-    backgroundColor: colors.primaryMuted,
-    borderWidth: 1,
-    borderColor: colors.primary,
-    borderRadius: 22,
-    paddingVertical: 18,
-    paddingHorizontal: 18,
-    alignItems: 'center',
-  },
-  codeBoxPressed: {
-    opacity: 0.75,
-    transform: [{ scale: 0.99 }],
-  },
-  code: {
-    color: colors.text,
-    fontSize: 42,
-    lineHeight: 48,
-    letterSpacing: 8,
-    fontWeight: '900',
+  title: {
+    color: theme.colors.text,
+    ...theme.typography.title,
   },
   text: {
-    color: colors.textMuted,
-    fontSize: 15,
-    lineHeight: 22,
+    color: theme.colors.textMuted,
+    ...theme.typography.body,
   },
-  primaryButton: {
-    backgroundColor: colors.primary,
-    borderRadius: 18,
-    paddingVertical: 16,
-    alignItems: 'center',
-  },
-  primaryButtonText: {
-    color: colors.background,
-    fontSize: 16,
-    fontWeight: '900',
-  },
-  disabled: {
-    opacity: 0.6,
+  actions: {
+    gap: theme.spacing.sm,
   },
 });

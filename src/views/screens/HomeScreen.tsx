@@ -1,7 +1,11 @@
 import { StyleSheet, Text, View } from 'react-native';
 
-import { colors } from '../../constants/colors';
+import { theme } from '../../constants/theme';
+import { AnimatedEntrance } from '../components/ui/MicroInteractions';
+import { AppBadge } from '../components/ui/AppBadge';
 import { AppButton } from '../components/ui/AppButton';
+import { AppCard } from '../components/ui/AppCard';
+import { BrandLogo } from '../components/ui/BrandLogo';
 import { ScreenShell } from '../components/ui/ScreenShell';
 
 type HomeScreenProps = {
@@ -11,32 +15,58 @@ type HomeScreenProps = {
   onJoinRoom: () => void;
 };
 
+const steps = ['Entre ou crie uma sala', 'Entre na fila', 'Cante na sua vez'];
+
 export function HomeScreen({ userId, authMessage, onCreateRoom, onJoinRoom }: HomeScreenProps) {
   return (
-    <ScreenShell scroll={false} contentStyle={styles.container}>
-      <View style={styles.hero}>
-        <View style={styles.brandRow}>
-          <Text style={styles.brand}>Listaokê</Text>
-          <View style={styles.livePill}>
-            <Text style={styles.livePillText}>ao vivo</Text>
-          </View>
+    <ScreenShell contentStyle={styles.container}>
+      <AnimatedEntrance type="slideUp" style={styles.hero}>
+        <View style={styles.topRow}>
+          <BrandLogo variant="vertical" style={styles.logo} />
+          <AppBadge label="Ao vivo" variant={userId ? 'success' : 'neutral'} />
         </View>
 
-        <Text style={styles.title}>Fila de karaokê sem confusão.</Text>
-        <Text style={styles.subtitle}>Crie uma sala, chame a turma e deixe o palco girar.</Text>
-      </View>
+        <View style={styles.copy}>
+          <Text accessibilityRole="header" style={styles.title}>
+            Seu karaokê sem bagunça.
+          </Text>
+          <Text style={styles.subtitle}>Organize a fila, acompanhe o palco e deixe o rolê andar.</Text>
+        </View>
+      </AnimatedEntrance>
 
-      <View style={styles.actions}>
-        <AppButton title="Criar sala" onPress={onCreateRoom} />
-        <AppButton title="Entrar com código" variant="secondary" onPress={onJoinRoom} />
-      </View>
+      <AnimatedEntrance type="slideUp" delay={80}>
+        <AppCard variant="raised" style={styles.stepsCard}>
+          {steps.map((step, index) => (
+            <View key={step} style={styles.stepRow}>
+              <Text style={styles.stepNumber}>{index + 1}</Text>
+              <Text style={styles.stepText}>{step}</Text>
+            </View>
+          ))}
+        </AppCard>
+      </AnimatedEntrance>
 
-      <View style={styles.statusBox}>
-        <View style={[styles.statusDot, userId ? styles.statusDotOn : styles.statusDotOff]} />
-        <Text style={styles.statusText}>
-          {userId ? authMessage : 'Conectando usuário anônimo...'}
-        </Text>
-      </View>
+      <AnimatedEntrance type="slideUp" delay={120} style={styles.bottom}>
+        <View style={styles.actions}>
+          <AppButton
+            title="Entrar em uma sala"
+            accessibilityHint="Abre a tela para digitar o código da sala."
+            onPress={onJoinRoom}
+          />
+          <AppButton
+            title="Criar uma sala"
+            accessibilityHint="Abre a tela para criar uma nova sala de karaokê."
+            variant="secondary"
+            onPress={onCreateRoom}
+          />
+        </View>
+
+        <View accessibilityLiveRegion="polite" style={styles.statusBox}>
+          <View style={[styles.statusDot, userId ? styles.statusDotOn : styles.statusDotOff]} />
+          <Text style={styles.statusText}>
+            {userId ? authMessage : 'Conectando usuário anônimo...'}
+          </Text>
+        </View>
+      </AnimatedEntrance>
     </ScreenShell>
   );
 }
@@ -44,76 +74,89 @@ export function HomeScreen({ userId, authMessage, onCreateRoom, onJoinRoom }: Ho
 const styles = StyleSheet.create({
   container: {
     justifyContent: 'space-between',
+    gap: theme.spacing.xl,
   },
   hero: {
-    gap: 16,
-    paddingTop: 28,
+    gap: theme.spacing.xl,
+    paddingTop: theme.spacing.md,
   },
-  brandRow: {
+  topRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
-    gap: 12,
+    gap: theme.spacing.md,
   },
-  brand: {
-    color: colors.primary,
-    fontSize: 15,
-    fontWeight: '900',
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
+  logo: {
+    flexShrink: 0,
   },
-  livePill: {
-    backgroundColor: colors.primaryMuted,
-    borderColor: '#2D6B55',
-    borderWidth: 1,
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-  },
-  livePillText: {
-    color: colors.primary,
-    fontSize: 12,
-    fontWeight: '900',
-    textTransform: 'uppercase',
+  copy: {
+    gap: theme.spacing.md,
   },
   title: {
-    color: colors.text,
-    fontSize: 40,
-    lineHeight: 44,
+    color: theme.colors.text,
+    fontSize: 42,
+    lineHeight: 47,
     fontWeight: '900',
   },
   subtitle: {
-    color: colors.textMuted,
-    fontSize: 17,
-    lineHeight: 25,
+    color: theme.colors.textMuted,
+    ...theme.typography.body,
+  },
+  stepsCard: {
+    gap: theme.spacing.md,
+  },
+  stepRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.md,
+  },
+  stepNumber: {
+    width: 32,
+    height: 32,
+    borderRadius: theme.radius.pill,
+    backgroundColor: theme.colors.primaryMuted,
+    color: theme.colors.primary,
+    textAlign: 'center',
+    textAlignVertical: 'center',
+    fontSize: 15,
+    fontWeight: '900',
+    overflow: 'hidden',
+  },
+  stepText: {
+    color: theme.colors.text,
+    flex: 1,
+    ...theme.typography.bodyStrong,
+  },
+  bottom: {
+    gap: theme.spacing.lg,
   },
   actions: {
-    gap: 12,
+    gap: theme.spacing.md,
   },
   statusBox: {
-    backgroundColor: colors.surface,
-    borderColor: colors.borderSoft,
+    backgroundColor: theme.colors.surface,
+    borderColor: theme.colors.borderSoft,
     borderWidth: 1,
-    borderRadius: 999,
-    paddingHorizontal: 14,
+    borderRadius: theme.radius.pill,
+    paddingHorizontal: theme.spacing.md,
     paddingVertical: 11,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 9,
+    gap: theme.spacing.sm,
   },
   statusDot: {
     width: 8,
     height: 8,
-    borderRadius: 999,
+    borderRadius: theme.radius.pill,
   },
   statusDotOn: {
-    backgroundColor: colors.primary,
+    backgroundColor: theme.colors.success,
   },
   statusDotOff: {
-    backgroundColor: colors.textSoft,
+    backgroundColor: theme.colors.textSoft,
   },
   statusText: {
-    color: colors.textSoft,
+    color: theme.colors.textSoft,
     fontSize: 13,
     lineHeight: 18,
     flex: 1,

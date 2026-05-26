@@ -1,10 +1,11 @@
-import { ActivityIndicator, StyleSheet, Text, TouchableOpacity } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text } from 'react-native';
 import type { GestureResponderEvent, StyleProp, ViewStyle } from 'react-native';
 
-import { colors } from '../../../constants/colors';
+import { theme } from '../../../constants/theme';
+import { PressFeedback } from './MicroInteractions';
 
 type AppButtonVariant = 'primary' | 'secondary' | 'danger' | 'dangerOutline' | 'ghost';
-type AppButtonSize = 'default' | 'small';
+type AppButtonSize = 'default' | 'small' | 'compact';
 
 type AppButtonProps = {
   title: string;
@@ -13,6 +14,8 @@ type AppButtonProps = {
   size?: AppButtonSize;
   disabled?: boolean;
   loading?: boolean;
+  accessibilityLabel?: string;
+  accessibilityHint?: string;
   style?: StyleProp<ViewStyle>;
 };
 
@@ -23,10 +26,13 @@ export function AppButton({
   size = 'default',
   disabled = false,
   loading = false,
+  accessibilityLabel,
+  accessibilityHint,
   style,
 }: AppButtonProps) {
   const isDisabled = disabled || loading;
-  const indicatorColor = variant === 'primary' ? colors.background : colors.text;
+  const indicatorColor =
+    variant === 'primary' && !isDisabled ? theme.colors.background : theme.colors.textMuted;
 
   const variantTextStyle = {
     primary: styles.primaryText,
@@ -36,13 +42,17 @@ export function AppButton({
     ghost: styles.ghostText,
   }[variant];
 
-  const sizeTextStyle = size === 'small' ? styles.smallText : styles.defaultText;
+  const sizeTextStyle = size === 'default' ? styles.defaultText : styles.smallText;
 
   return (
-    <TouchableOpacity
+    <PressFeedback
+      accessibilityHint={accessibilityHint}
+      accessibilityLabel={accessibilityLabel ?? title}
+      accessibilityRole="button"
+      accessibilityState={{ disabled: isDisabled, busy: loading }}
       disabled={isDisabled}
-      activeOpacity={0.82}
-      style={[
+      hitSlop={8}
+      contentStyle={[
         styles.base,
         styles[variant],
         styles[size],
@@ -52,11 +62,18 @@ export function AppButton({
       onPress={onPress}
     >
       {loading ? (
-        <ActivityIndicator color={indicatorColor} />
+        <ActivityIndicator color={indicatorColor} size={size === 'default' ? 'small' : 16} />
       ) : (
-        <Text style={[styles.text, variantTextStyle, sizeTextStyle]}>{title}</Text>
+        <Text
+          adjustsFontSizeToFit
+          minimumFontScale={0.82}
+          numberOfLines={2}
+          style={[styles.text, variantTextStyle, sizeTextStyle, isDisabled && styles.disabledText]}
+        >
+          {title}
+        </Text>
       )}
-    </TouchableOpacity>
+    </PressFeedback>
   );
 }
 
@@ -67,64 +84,76 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   default: {
-    borderRadius: 18,
-    minHeight: 54,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    borderRadius: theme.radius.lg,
+    minHeight: 56,
+    paddingHorizontal: theme.spacing.xl,
+    paddingVertical: 15,
   },
   small: {
     alignSelf: 'flex-start',
-    borderRadius: 999,
-    minHeight: 34,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
+    borderRadius: theme.radius.pill,
+    minHeight: 44,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: 8,
+  },
+  compact: {
+    alignSelf: 'flex-start',
+    borderRadius: theme.radius.md,
+    minHeight: 44,
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: 9,
   },
   primary: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primary,
+    ...theme.glow.primary,
   },
   secondary: {
-    backgroundColor: colors.surfaceRaised,
-    borderColor: colors.borderSoft,
+    backgroundColor: theme.colors.surfaceRaised,
+    borderColor: theme.colors.border,
   },
   danger: {
-    backgroundColor: colors.dangerMuted,
-    borderColor: '#6E2638',
+    backgroundColor: theme.colors.dangerMuted,
+    borderColor: theme.colors.dangerBorder,
   },
   dangerOutline: {
-    backgroundColor: 'transparent',
-    borderColor: '#6E2638',
+    backgroundColor: theme.colors.transparent,
+    borderColor: theme.colors.dangerBorder,
   },
   ghost: {
-    backgroundColor: 'transparent',
-    borderColor: colors.borderSoft,
+    backgroundColor: theme.colors.transparent,
+    borderColor: theme.colors.borderSoft,
   },
   text: {
     fontWeight: '900',
     textAlign: 'center',
+    includeFontPadding: false,
   },
   defaultText: {
-    fontSize: 16,
+    ...theme.typography.button,
   },
   smallText: {
-    fontSize: 12,
+    ...theme.typography.buttonSmall,
   },
   primaryText: {
-    color: colors.background,
+    color: theme.colors.background,
   },
   secondaryText: {
-    color: colors.text,
+    color: theme.colors.text,
   },
   dangerText: {
-    color: colors.danger,
+    color: theme.colors.danger,
   },
   dangerOutlineText: {
-    color: colors.danger,
+    color: theme.colors.danger,
   },
   ghostText: {
-    color: colors.textMuted,
+    color: theme.colors.textMuted,
   },
   disabled: {
-    opacity: 0.55,
+    opacity: 0.62,
+  },
+  disabledText: {
+    color: theme.colors.textDisabled,
   },
 });

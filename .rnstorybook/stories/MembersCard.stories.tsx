@@ -3,6 +3,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { StorybookScreen } from '../../src/storybook/decorators/StorybookScreen';
 import {
+  fullMembers,
   ownerAndGuestsMembers,
   ownerOnlyMembers,
   ownerWithManualMembers,
@@ -67,7 +68,7 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const OwnerOnly: Story = {
-  name: 'Só dono',
+  name: 'Poucos membros',
   args: {
     ...baseArgs,
     members: ownerOnlyMembers,
@@ -77,17 +78,48 @@ export const OwnerOnly: Story = {
 };
 
 export const OwnerAndGuests: Story = {
-  name: 'Dono + convidados',
+  name: 'Muitos membros',
   args: {
     ...baseArgs,
-    members: ownerAndGuestsMembers,
+    members: fullMembers,
     currentMemberId: 'member-current',
     isOwner: false,
   },
 };
 
+export const WithSingerOnStage: Story = {
+  name: 'Com pessoa no palco',
+  args: {
+    ...baseArgs,
+    members: fullMembers,
+    currentMemberId: 'member-current',
+    currentOnStageMemberId: 'member-ana',
+    queuedMemberIds: ['member-current', 'member-bruno'],
+  },
+};
+
+export const WithPeopleInQueue: Story = {
+  name: 'Com pessoas na fila',
+  args: {
+    ...baseArgs,
+    members: fullMembers,
+    currentMemberId: 'member-current',
+    queuedMemberIds: ['member-current', 'member-ana', 'member-manual'],
+  },
+};
+
+export const WithPeopleOutsideQueue: Story = {
+  name: 'Com pessoas fora da fila',
+  args: {
+    ...baseArgs,
+    members: fullMembers,
+    currentMemberId: 'member-current',
+    queuedMemberIds: ['member-ana'],
+  },
+};
+
 export const GuestViewingList: Story = {
-  name: 'Convidado vendo lista',
+  name: 'Visão convidado',
   args: {
     ...baseArgs,
     members: ownerAndGuestsMembers,
@@ -97,7 +129,7 @@ export const GuestViewingList: Story = {
 };
 
 export const OwnerManagingMembers: Story = {
-  name: 'Dono com ações',
+  name: 'Visão dono',
   args: {
     ...baseArgs,
     members: ownerAndGuestsMembers,

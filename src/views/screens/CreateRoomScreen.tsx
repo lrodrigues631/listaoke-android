@@ -1,9 +1,12 @@
 import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, StyleSheet, Text, View } from 'react-native';
 
-import { colors } from '../../constants/colors';
+import { theme } from '../../constants/theme';
+import { AnimatedEntrance } from '../components/ui/MicroInteractions';
 import { AppButton } from '../components/ui/AppButton';
+import { AppCard } from '../components/ui/AppCard';
 import { AppTextInput } from '../components/ui/AppTextInput';
+import { BrandLogo } from '../components/ui/BrandLogo';
 import { ScreenShell } from '../components/ui/ScreenShell';
 
 type CreateRoomScreenProps = {
@@ -11,6 +14,8 @@ type CreateRoomScreenProps = {
   errorMessage: string | null;
   onBack: () => void;
   onCreateRoom: (roomName: string, ownerName: string) => void;
+  initialRoomName?: string;
+  initialOwnerName?: string;
 };
 
 export function CreateRoomScreen({
@@ -18,9 +23,11 @@ export function CreateRoomScreen({
   errorMessage,
   onBack,
   onCreateRoom,
+  initialRoomName = '',
+  initialOwnerName = '',
 }: CreateRoomScreenProps) {
-  const [roomName, setRoomName] = useState('');
-  const [ownerName, setOwnerName] = useState('');
+  const [roomName, setRoomName] = useState(initialRoomName);
+  const [ownerName, setOwnerName] = useState(initialOwnerName);
   const [localError, setLocalError] = useState<string | null>(null);
 
   function handleCreateRoom() {
@@ -28,12 +35,12 @@ export function CreateRoomScreen({
     const cleanOwnerName = ownerName.trim();
 
     if (!cleanRoomName) {
-      setLocalError('Dá um nome para a sala. "Karaokê aleatório" até vale, mas precisa ter nome.');
+      setLocalError('Dá um nome para a sala antes de abrir o palco.');
       return;
     }
 
     if (!cleanOwnerName) {
-      setLocalError('Coloca seu nome ou apelido. O microfone precisa saber quem manda.');
+      setLocalError('Coloca seu nome ou apelido para administrar a sala.');
       return;
     }
 
@@ -47,40 +54,65 @@ export function CreateRoomScreen({
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScreenShell contentStyle={styles.container}>
-        <View style={styles.header}>
-          <AppButton title="Voltar" variant="ghost" size="small" disabled={isCreating} onPress={onBack} />
-          <Text style={styles.badge}>Nova sala</Text>
-          <Text style={styles.title}>Monte o palco.</Text>
-          <Text style={styles.subtitle}>Dê um nome para a sala e para quem vai administrar.</Text>
-        </View>
+        <AnimatedEntrance type="slideUp" style={styles.header}>
+          <View style={styles.navRow}>
+            <AppButton
+              title="Voltar"
+              accessibilityLabel="Voltar para a tela inicial"
+              variant="ghost"
+              size="compact"
+              disabled={isCreating}
+              onPress={onBack}
+            />
+            <BrandLogo variant="horizontal" />
+          </View>
 
-        <View style={styles.formCard}>
-          <AppTextInput
-            editable={!isCreating}
-            value={roomName}
-            onChangeText={setRoomName}
-            label="Nome da sala"
-            placeholder="Ex: Karaokê de sábado"
-            maxLength={60}
-          />
+          <View style={styles.copy}>
+            <Text style={styles.eyebrow}>Nova sala</Text>
+            <Text accessibilityRole="header" style={styles.title}>
+              Criar sala
+            </Text>
+            <Text style={styles.subtitle}>Monte sua sala e chame a galera para cantar.</Text>
+          </View>
+        </AnimatedEntrance>
 
-          <AppTextInput
-            editable={!isCreating}
-            value={ownerName}
-            onChangeText={setOwnerName}
-            label="Seu nome"
-            placeholder="Ex: Leandro"
-            maxLength={40}
-          />
+        <AnimatedEntrance type="slideUp" delay={80}>
+          <AppCard variant="raised" style={styles.formCard}>
+            <AppTextInput
+              editable={!isCreating}
+              value={roomName}
+              onChangeText={setRoomName}
+              label="Nome da sala"
+              placeholder="Ex: Karaokê de sábado"
+              maxLength={60}
+            />
 
-          {(localError || errorMessage) && (
-            <Text style={styles.errorText}>{localError || errorMessage}</Text>
-          )}
+            <AppTextInput
+              editable={!isCreating}
+              value={ownerName}
+              onChangeText={setOwnerName}
+              label="Seu nome"
+              placeholder="Ex: Leandro"
+              maxLength={40}
+            />
 
-          <AppButton title="Criar sala" loading={isCreating} disabled={isCreating} onPress={handleCreateRoom} />
-        </View>
+            {(localError || errorMessage) ? (
+              <Text accessibilityLiveRegion="polite" style={styles.errorText}>
+                {localError || errorMessage}
+              </Text>
+            ) : null}
 
-        <Text style={styles.footerText}>Os convidados entram depois pelo código.</Text>
+            <AppButton
+              title="Criar sala"
+              accessibilityHint="Cria a sala com o nome informado e entra como dono."
+              loading={isCreating}
+              disabled={isCreating}
+              onPress={handleCreateRoom}
+            />
+          </AppCard>
+        </AnimatedEntrance>
+
+        <Text style={styles.footerText}>Os convidados entram depois pelo código da sala.</Text>
       </ScreenShell>
     </KeyboardAvoidingView>
   );
@@ -89,51 +121,47 @@ export function CreateRoomScreen({
 const styles = StyleSheet.create({
   keyboardView: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: theme.colors.background,
   },
   container: {
     justifyContent: 'space-between',
-    gap: 28,
+    gap: theme.spacing.xxl,
   },
   header: {
-    gap: 12,
+    gap: theme.spacing.xl,
   },
-  badge: {
-    color: colors.primary,
-    fontSize: 13,
-    fontWeight: '900',
-    letterSpacing: 0.5,
+  navRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: theme.spacing.md,
+  },
+  copy: {
+    gap: theme.spacing.sm,
+  },
+  eyebrow: {
+    color: theme.colors.primary,
     textTransform: 'uppercase',
-    marginTop: 18,
+    ...theme.typography.label,
   },
   title: {
-    color: colors.text,
-    fontSize: 34,
-    lineHeight: 39,
-    fontWeight: '900',
+    color: theme.colors.text,
+    ...theme.typography.titleLarge,
   },
   subtitle: {
-    color: colors.textMuted,
-    fontSize: 16,
-    lineHeight: 23,
+    color: theme.colors.textMuted,
+    ...theme.typography.body,
   },
   formCard: {
-    backgroundColor: colors.surface,
-    borderColor: colors.borderSoft,
-    borderWidth: 1,
-    borderRadius: 20,
-    padding: 16,
-    gap: 16,
+    gap: theme.spacing.lg,
   },
   errorText: {
-    color: colors.danger,
-    fontSize: 13,
-    lineHeight: 19,
+    color: theme.colors.danger,
+    ...theme.typography.body,
   },
   footerText: {
-    color: colors.textSoft,
-    fontSize: 13,
-    lineHeight: 19,
-    paddingBottom: 4,
+    color: theme.colors.textSoft,
+    paddingBottom: theme.spacing.xs,
+    ...theme.typography.body,
   },
 });

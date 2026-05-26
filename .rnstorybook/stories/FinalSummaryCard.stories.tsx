@@ -42,7 +42,7 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const EmptySummary: Story = {
-  name: 'Sem músicas cantadas',
+  name: 'Sem apresentações',
   args: {
     ...baseArgs,
     summary: emptySummary,
@@ -50,7 +50,7 @@ export const EmptySummary: Story = {
 };
 
 export const OneSong: Story = {
-  name: 'Uma música cantada',
+  name: 'Poucas apresentações',
   args: {
     ...baseArgs,
     summary: oneSongSummary,
@@ -58,10 +58,29 @@ export const OneSong: Story = {
 };
 
 export const WithRanking: Story = {
-  name: 'Com ranking',
+  name: 'Ranking completo',
   args: {
     ...baseArgs,
     summary: rankingSummary,
+  },
+};
+
+export const ShareAvailable: Story = {
+  name: 'Compartilhamento disponível',
+  args: {
+    ...baseArgs,
+    summary: rankingSummary,
+    canShareSummary: true,
+    onShareSummary: () => console.log('Mock: compartilhar resumo'),
+  },
+};
+
+export const ShareUnavailable: Story = {
+  name: 'Compartilhamento indisponível',
+  args: {
+    ...baseArgs,
+    summary: rankingSummary,
+    canShareSummary: false,
   },
 };
 

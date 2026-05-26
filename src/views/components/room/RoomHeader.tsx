@@ -1,7 +1,10 @@
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, StyleSheet, Text, View } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 
-import { colors } from '../../../constants/colors';
+import { theme } from '../../../constants/theme';
+import { AppBadge } from '../ui/AppBadge';
+import { AppButton } from '../ui/AppButton';
+import { RoomCodeChip } from '../ui/RoomCodeChip';
 
 type BasicRoom = {
   roomName?: string;
@@ -20,7 +23,10 @@ type RoomHeaderProps = {
   statusLabel?: string;
   roomStatus?: 'open' | 'closed';
   isRoomClosed?: boolean;
+  isOwner?: boolean;
+  isCopyingInvite?: boolean;
   onCopyCode?: () => void;
+  onCopyInvite?: () => void;
   [key: string]: unknown;
 };
 
@@ -35,7 +41,10 @@ export function RoomHeader({
   statusLabel,
   roomStatus,
   isRoomClosed,
+  isOwner = false,
+  isCopyingInvite = false,
   onCopyCode,
+  onCopyInvite,
 }: RoomHeaderProps) {
   const resolvedRoomName = roomName ?? room?.roomName ?? name ?? title ?? 'Sala';
   const resolvedRoomCode = roomCode ?? room?.roomCode ?? code ?? '';
@@ -61,7 +70,7 @@ export function RoomHeader({
 
       await Clipboard.setStringAsync(resolvedRoomCode);
 
-      Alert.alert('Código copiado', 'Agora manda no grupo.');
+      Alert.alert('Código copiado.', 'Agora manda no grupo.');
     } catch {
       Alert.alert(
         'Não consegui copiar',
@@ -72,87 +81,159 @@ export function RoomHeader({
 
   return (
     <View style={styles.container}>
-      <View style={styles.topRow}>
-        <Text style={styles.status}>{resolvedStatusLabel}</Text>
+      <View style={styles.brandRow}>
+        <View style={styles.brandLockup}>
+          <View style={styles.brandMark}>
+            <Text style={styles.brandMarkText}>L</Text>
+          </View>
+          <Text style={styles.brandText}>Listaokê</Text>
+        </View>
 
-        {resolvedRoomCode ? (
-          <Pressable
-            onPress={handleCopyCode}
-            style={({ pressed }) => [styles.codePill, pressed && styles.codePillPressed]}
-          >
-            <Text style={styles.codeLabel}>Código</Text>
-            <Text style={styles.codeText}>{resolvedRoomCode}</Text>
-          </Pressable>
-        ) : null}
+        <View style={styles.badgeRow}>
+          {isOwner ? <AppBadge label="Dono" variant="accent" /> : null}
+          <AppBadge
+            label={resolvedStatusLabel}
+            variant={resolvedIsClosed ? 'danger' : 'success'}
+          />
+        </View>
       </View>
 
-      <Text style={styles.title}>{resolvedRoomName}</Text>
+      <View style={styles.roomBlock}>
+        <Text style={styles.eyebrow}>{resolvedIsClosed ? 'Sala encerrada' : 'Sala ativa'}</Text>
+        <Text
+          accessibilityRole="header"
+          adjustsFontSizeToFit
+          minimumFontScale={0.78}
+          numberOfLines={2}
+          style={styles.title}
+        >
+          {resolvedRoomName}
+        </Text>
+      </View>
 
-      {resolvedRoomCode ? (
-        <Text style={styles.hint}>Toque no código para copiar.</Text>
-      ) : (
-        <Text style={styles.hint}>Sala pronta para a cantoria.</Text>
-      )}
+      <View style={styles.codePanel}>
+        <View style={styles.codeTextGroup}>
+          <Text style={styles.codeTitle}>Código da sala</Text>
+          <Text style={styles.hint}>
+            {resolvedRoomCode
+              ? isOwner
+                ? 'Copie ou compartilhe para chamar a turma.'
+                : 'Use como identificação da sala.'
+              : 'Sala pronta para a cantoria.'}
+          </Text>
+        </View>
+
+        {resolvedRoomCode ? (
+          <View style={styles.codeActions}>
+            <RoomCodeChip
+              code={resolvedRoomCode}
+              accessibilityLabel={`Código da sala ${resolvedRoomCode}. Toque para copiar.`}
+              highlighted={isOwner}
+              onPress={handleCopyCode}
+            />
+
+            {onCopyInvite ? (
+              <AppButton
+                title="Compartilhar"
+                accessibilityLabel="Compartilhar convite da sala"
+                variant="secondary"
+                size="compact"
+                loading={isCopyingInvite}
+                disabled={isCopyingInvite}
+                onPress={onCopyInvite}
+              />
+            ) : null}
+          </View>
+        ) : null}
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    gap: 12,
-    paddingTop: 48,
+    gap: theme.spacing.lg,
+    paddingTop: theme.spacing.huge,
   },
-  topRow: {
+  brandRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 12,
+    gap: theme.spacing.md,
   },
-  status: {
+  brandLockup: {
     flex: 1,
-    color: colors.primary,
-    fontSize: 13,
-    fontWeight: '900',
-    letterSpacing: 1.5,
-    textTransform: 'uppercase',
-  },
-  codePill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    backgroundColor: colors.surfaceRaised,
+    gap: theme.spacing.sm,
+  },
+  brandMark: {
+    width: 30,
+    height: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.primaryMuted,
+    borderColor: theme.colors.primarySoft,
+    borderRadius: theme.radius.sm,
     borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 999,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
   },
-  codePillPressed: {
-    opacity: 0.75,
-    transform: [{ scale: 0.98 }],
-  },
-  codeLabel: {
-    color: colors.textSoft,
-    fontSize: 11,
+  brandMarkText: {
+    color: theme.colors.primary,
+    fontSize: 16,
+    lineHeight: 20,
     fontWeight: '900',
-    letterSpacing: 0.8,
+  },
+  brandText: {
+    color: theme.colors.text,
+    fontSize: 15,
+    lineHeight: 19,
+    fontWeight: '900',
+    letterSpacing: 0.6,
     textTransform: 'uppercase',
   },
-  codeText: {
-    color: colors.text,
-    fontSize: 16,
-    fontWeight: '900',
-    letterSpacing: 2,
+  badgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    flexWrap: 'wrap',
+    gap: theme.spacing.sm,
+    flexShrink: 1,
+  },
+  roomBlock: {
+    gap: theme.spacing.xs,
+  },
+  eyebrow: {
+    color: theme.colors.primary,
+    textTransform: 'uppercase',
+    ...theme.typography.label,
   },
   title: {
-    color: colors.text,
-    fontSize: 40,
-    lineHeight: 46,
-    fontWeight: '900',
+    color: theme.colors.text,
+    ...theme.typography.titleLarge,
+  },
+  codePanel: {
+    backgroundColor: theme.colors.surface,
+    borderColor: theme.colors.borderSoft,
+    borderRadius: theme.radius.xl,
+    borderWidth: 1,
+    gap: theme.spacing.md,
+    padding: theme.spacing.lg,
+  },
+  codeTextGroup: {
+    gap: 3,
+  },
+  codeTitle: {
+    color: theme.colors.text,
+    ...theme.typography.bodyStrong,
   },
   hint: {
-    color: colors.textMuted,
-    fontSize: 15,
-    lineHeight: 22,
+    color: theme.colors.textMuted,
+    ...theme.typography.body,
+  },
+  codeActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: theme.spacing.md,
   },
 });

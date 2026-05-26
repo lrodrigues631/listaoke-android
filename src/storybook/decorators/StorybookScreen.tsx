@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { colors } from '../../constants/colors';
+import { theme } from '../../constants/theme';
 
 type StorybookScreenProps = {
   children: ReactNode;
@@ -15,26 +16,36 @@ export function StorybookScreen({
   centered = false,
 }: StorybookScreenProps) {
   return (
-    <ScrollView contentContainerStyle={[styles.screen, centered && styles.centered]}>
-      {withCard ? <View style={styles.card}>{children}</View> : children}
-    </ScrollView>
+    <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
+      <ScrollView
+        contentContainerStyle={[styles.screen, centered && styles.centered]}
+        showsVerticalScrollIndicator={false}
+      >
+        {withCard ? <View style={styles.card}>{children}</View> : children}
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: theme.colors.background,
+  },
   screen: {
     flexGrow: 1,
-    backgroundColor: colors.background,
-    padding: 20,
+    backgroundColor: theme.colors.background,
+    padding: theme.spacing.xl,
   },
   centered: {
     justifyContent: 'center',
   },
   card: {
-    backgroundColor: colors.surface,
-    borderColor: colors.borderSoft,
-    borderRadius: 24,
+    backgroundColor: theme.colors.surface,
+    borderColor: theme.colors.borderSoft,
+    borderRadius: theme.radius.xl,
     borderWidth: 1,
-    padding: 20,
+    padding: theme.spacing.xl,
+    ...theme.shadows.card,
   },
 });
