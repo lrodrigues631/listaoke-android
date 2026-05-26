@@ -1,14 +1,17 @@
 import { useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, TextInput, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 
-import { theme } from '../../../constants/theme';
 import type { QueueItem } from '../../../types/queueTypes';
 import type { RoomMember } from '../../../types/roomTypes';
-import { AppBadge } from '../ui/AppBadge';
 import { AppButton } from '../ui/AppButton';
 import { AppCard } from '../ui/AppCard';
-import { EmptyState } from '../ui/EmptyState';
-import { AnimatedEntrance, GlowPulse } from '../ui/MicroInteractions';
 
 type QueueMoveDirection = 'up' | 'down';
 
@@ -24,18 +27,50 @@ type QueueCardProps = {
   onOwnerAddManualQueueItem: (name: string) => void;
   onOwnerMoveQueueItem: (item: QueueItem, direction: QueueMoveDirection) => void;
   onOwnerRemoveQueueItem: (item: QueueItem) => void;
+  onCurrentMemberLeaveQueue?: () => void;
+  onCurrentMemberMoveDown?: () => void;
 };
 
-function getMemberRoleLabel(member: RoomMember | undefined) {
-  if (!member) {
-    return 'Participante';
-  }
+type QueueIconButtonProps = {
+  label: string;
+  accessibilityLabel: string;
+  disabled?: boolean;
+  danger?: boolean;
+  onPress: () => void;
+};
 
-  if (member.is_manual) {
-    return 'Adicionado pelo dono';
-  }
-
-  return member.role === 'owner' ? 'Dono da sala' : 'Convidado';
+function QueueIconButton({
+  label,
+  accessibilityLabel,
+  disabled = false,
+  danger = false,
+  onPress,
+}: QueueIconButtonProps) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      disabled={disabled}
+      onPress={onPress}
+      hitSlop={8}
+      style={({ pressed }) => [
+        styles.iconButton,
+        danger && styles.iconButtonDanger,
+        disabled && styles.iconButtonDisabled,
+        pressed && !disabled && styles.iconButtonPressed,
+      ]}
+    >
+      <Text
+        style={[
+          styles.iconButtonText,
+          danger && styles.iconButtonTextDanger,
+          disabled && styles.iconButtonTextDisabled,
+        ]}
+      >
+        {label}
+      </Text>
+    </Pressable>
+  );
 }
 
 export function QueueCard({
@@ -50,11 +85,18 @@ export function QueueCard({
   onOwnerAddManualQueueItem,
   onOwnerMoveQueueItem,
   onOwnerRemoveQueueItem,
+  onCurrentMemberLeaveQueue,
+  onCurrentMemberMoveDown,
 }: QueueCardProps) {
   const [manualName, setManualName] = useState('');
-  const nextItem = waitingQueue[0] ?? null;
 
-  function handleAddManualPerson() {
+  const canAddManual =
+    isOwner &&
+    !isRoomClosed &&
+    !isChangingQueue &&
+    manualName.trim().length > 0;
+
+  function handleAddManual() {
     const cleanName = manualName.trim();
 
     if (!cleanName) {
@@ -66,340 +108,362 @@ export function QueueCard({
   }
 
   return (
-    <AnimatedEntrance type="slideUp">
-      <AppCard style={styles.card}>
-        <View style={styles.header}>
-          <View style={styles.headerCopy}>
-            <Text style={styles.eyebrow}>Fila de espera</Text>
+    <AppCard style={styles.card}>
+      <View style={styles.header}>
+        <View style={styles.headerCopy}>
+          <Text style={styles.eyebrow}>Fila de espera</Text>
 
-            <Text accessibilityRole="header" style={styles.title}>
-              {waitingQueue.length === 1
-                ? '1 pessoa na fila'
-                : `${waitingQueue.length} pessoas na fila`}
-            </Text>
-          </View>
-
-          <AppBadge
-            label={`${waitingQueue.length}`}
-            variant={waitingQueue.length ? 'primary' : 'neutral'}
-          />
+          <Text accessibilityRole="header" style={styles.title}>
+            {waitingQueue.length === 1
+              ? '1 pessoa na fila'
+              : `${waitingQueue.length} pessoas na fila`}
+          </Text>
         </View>
 
-        {isOwner && !isRoomClosed ? (
-          <View style={styles.manualQueueBox}>
-            <Text style={styles.manualTitle}>Adicionar sem app</Text>
+        <View style={styles.counter}>
+          <Text style={styles.counterText}>{waitingQueue.length}</Text>
+        </View>
+      </View>
 
+      {isOwner && !isRoomClosed ? (
+        <View style={styles.manualBox}>
+          <Text style={styles.manualTitle}>Adicionar sem app</Text>
+
+          <View style={styles.manualRow}>
             <TextInput
-              accessibilityHint="Digite o nome para colocar a pessoa na fila."
-              accessibilityLabel="Nome do cantor"
+              accessibilityLabel="Nome da pessoa"
               value={manualName}
               onChangeText={setManualName}
-              placeholder="Nome da pessoa"
-              placeholderTextColor={theme.colors.textSoft}
+              placeholder="Nome"
+              placeholderTextColor="rgba(255,255,255,0.38)"
               editable={!isChangingQueue}
               returnKeyType="done"
-              onSubmitEditing={handleAddManualPerson}
-              style={styles.manualQueueInput}
+              onSubmitEditing={handleAddManual}
+              style={styles.manualInput}
             />
 
             <AppButton
-              title="Colocar na fila"
-              accessibilityLabel="Adicionar cantor manualmente à fila"
+              title="+"
               size="compact"
-              disabled={isChangingQueue || !manualName.trim()}
+              disabled={!canAddManual}
               loading={isChangingQueue}
-              onPress={handleAddManualPerson}
+              onPress={handleAddManual}
             />
           </View>
-        ) : null}
+        </View>
+      ) : null}
 
-        {isLoadingQueue ? (
-          <View style={styles.loadingRow}>
-            <ActivityIndicator color={theme.colors.primary} />
-            <Text style={styles.loadingText}>Carregando a fila...</Text>
-          </View>
-        ) : null}
+      {isLoadingQueue ? (
+        <View style={styles.loadingRow}>
+          <ActivityIndicator color="#F04BFF" />
+          <Text style={styles.loadingText}>Carregando a fila...</Text>
+        </View>
+      ) : null}
 
-        {queueError ? <Text style={styles.errorText}>{queueError}</Text> : null}
+      {queueError ? <Text style={styles.errorText}>{queueError}</Text> : null}
 
-        {!isLoadingQueue && !queueError && waitingQueue.length === 0 ? (
-          <EmptyState
-            badge={isRoomClosed ? 'Encerrada' : 'Fila vazia'}
-            title={isRoomClosed ? 'A fila foi encerrada.' : 'Ninguém esperando agora.'}
-            message={
-              isRoomClosed
-                ? 'O resumo da noite fica logo acima.'
-                : isOwner
-                  ? 'Chame a turma pelo código ou adicione alguém sem app.'
-                  : 'Quando alguém entrar, a ordem aparece aqui.'
-            }
-          />
-        ) : null}
+      {!isLoadingQueue && !queueError && waitingQueue.length === 0 ? (
+        <Text style={styles.emptyText}>
+          {isRoomClosed ? 'A fila foi encerrada.' : 'Ninguém esperando agora.'}
+        </Text>
+      ) : null}
 
-        {!isLoadingQueue && !queueError && !isRoomClosed && nextItem ? (
-          <View style={styles.nextBox}>
-            <Text style={styles.nextLabel}>Próximo</Text>
-            <Text style={styles.nextName}>
-              {membersById[nextItem.member_id]?.name ?? 'Participante'}
-            </Text>
-          </View>
-        ) : null}
+      {!isLoadingQueue && !queueError && !isRoomClosed ? (
+        <View style={styles.queueList}>
+          {waitingQueue.map((item, index) => {
+            const member = membersById[item.member_id];
+            const displayName = member?.name ?? 'Participante';
+            const isThisMe = item.member_id === currentMemberId;
+            const isFirst = index === 0;
+            const isLast = index === waitingQueue.length - 1;
 
-        {!isLoadingQueue && !queueError && !isRoomClosed ? (
-          <View style={styles.queueList}>
-            {waitingQueue.map((item, index) => {
-              const member = membersById[item.member_id];
-              const isThisMe = item.member_id === currentMemberId;
-              const isFirst = index === 0;
-              const isLast = index === waitingQueue.length - 1;
+            const canRemove = isOwner || isThisMe;
+            const canMoveUp = isOwner && !isFirst;
+            const canMoveDown = isOwner
+              ? !isLast
+              : isThisMe && !isLast && Boolean(onCurrentMemberMoveDown);
 
-              return (
-                <GlowPulse key={item.id} active={isThisMe} borderRadius={theme.radius.lg}>
-                  <View
-                    style={[
-                      styles.queueItem,
-                      isFirst && styles.nextItem,
-                      isThisMe && styles.myItem,
-                    ]}
-                  >
-                    <View style={styles.queueItemMain}>
-                      <Text
-                        style={[
-                          styles.queuePosition,
-                          isThisMe && styles.myQueuePosition,
-                        ]}
-                      >
-                        {index + 1}
-                      </Text>
+            const showActions = isOwner || isThisMe;
 
-                      <View style={styles.queueInfo}>
-                        <Text
-                          numberOfLines={1}
-                          ellipsizeMode="tail"
-                          style={styles.memberName}
-                        >
-                          {member?.name ?? 'Participante'}
-                        </Text>
-
-                        <Text
-                          numberOfLines={1}
-                          ellipsizeMode="tail"
-                          style={styles.memberRole}
-                        >
-                          {getMemberRoleLabel(member)}
-                        </Text>
-                      </View>
-                    </View>
-
-                    <View style={styles.badges}>
-                      {isFirst ? <AppBadge label="Próximo" variant="primary" /> : null}
-                      {isThisMe ? <AppBadge label="Você" variant="accent" /> : null}
-                      {member?.is_manual ? (
-                        <AppBadge label="Manual" variant="neutral" />
-                      ) : null}
-                    </View>
-
-                    {isOwner ? (
-                      <View style={styles.queueAdminActions}>
-                        <View style={styles.actionButton}>
-                          <AppButton
-                            title="Subir"
-                            accessibilityLabel={`Subir ${member?.name ?? 'participante'} na fila`}
-                            variant="secondary"
-                            size="compact"
-                            disabled={isChangingQueue || isRoomClosed || isFirst}
-                            onPress={() => onOwnerMoveQueueItem(item, 'up')}
-                          />
-                        </View>
-
-                        <View style={styles.actionButton}>
-                          <AppButton
-                            title="Descer"
-                            accessibilityLabel={`Descer ${member?.name ?? 'participante'} na fila`}
-                            variant="secondary"
-                            size="compact"
-                            disabled={isChangingQueue || isRoomClosed || isLast}
-                            onPress={() => onOwnerMoveQueueItem(item, 'down')}
-                          />
-                        </View>
-
-                        <View style={styles.actionButtonFull}>
-                          <AppButton
-                            title="Remover"
-                            accessibilityLabel={`Remover ${member?.name ?? 'participante'} da fila`}
-                            variant="dangerOutline"
-                            size="compact"
-                            disabled={isChangingQueue || isRoomClosed}
-                            onPress={() => onOwnerRemoveQueueItem(item)}
-                          />
-                        </View>
-                      </View>
-                    ) : null}
+            return (
+              <View
+                key={item.id}
+                style={[
+                  styles.queueItem,
+                  isFirst && styles.queueItemFirst,
+                  isThisMe && styles.queueItemMe,
+                ]}
+              >
+                <View style={styles.positionArea}>
+                  <View style={styles.positionBadge}>
+                    <Text style={styles.positionText}>{index + 1}</Text>
                   </View>
-                </GlowPulse>
-              );
-            })}
-          </View>
-        ) : null}
-      </AppCard>
-    </AnimatedEntrance>
+                </View>
+
+                <View style={styles.nameArea}>
+                  <Text numberOfLines={1} ellipsizeMode="tail" style={styles.name}>
+                    {displayName}
+                  </Text>
+                </View>
+
+                <View style={styles.actionsArea}>
+                  {showActions && canRemove ? (
+                    <QueueIconButton
+                      label="×"
+                      danger
+                      accessibilityLabel={
+                        isOwner
+                          ? `Remover ${displayName} da fila`
+                          : 'Sair da fila'
+                      }
+                      disabled={isChangingQueue || isRoomClosed}
+                      onPress={() => {
+                        if (isOwner) {
+                          onOwnerRemoveQueueItem(item);
+                          return;
+                        }
+
+                        onCurrentMemberLeaveQueue?.();
+                      }}
+                    />
+                  ) : (
+                    <View style={styles.iconGhost} />
+                  )}
+
+                  {isOwner ? (
+                    <QueueIconButton
+                      label="↑"
+                      accessibilityLabel={`Subir ${displayName} na fila`}
+                      disabled={isChangingQueue || isRoomClosed || !canMoveUp}
+                      onPress={() => onOwnerMoveQueueItem(item, 'up')}
+                    />
+                  ) : (
+                    <View style={styles.iconGhost} />
+                  )}
+
+                  {showActions ? (
+                    <QueueIconButton
+                      label="↓"
+                      accessibilityLabel={
+                        isOwner ? `Descer ${displayName} na fila` : 'Adiar minha vez'
+                      }
+                      disabled={isChangingQueue || isRoomClosed || !canMoveDown}
+                      onPress={() => {
+                        if (isOwner) {
+                          onOwnerMoveQueueItem(item, 'down');
+                          return;
+                        }
+
+                        onCurrentMemberMoveDown?.();
+                      }}
+                    />
+                  ) : (
+                    <View style={styles.iconGhost} />
+                  )}
+                </View>
+              </View>
+            );
+          })}
+        </View>
+      ) : null}
+    </AppCard>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    gap: theme.spacing.lg,
+    gap: 16,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
-    gap: theme.spacing.md,
+    gap: 12,
   },
   headerCopy: {
     flex: 1,
-    gap: 2,
     minWidth: 0,
   },
   eyebrow: {
-    color: theme.colors.primary,
+    color: '#F04BFF',
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 1.1,
     textTransform: 'uppercase',
-    ...theme.typography.label,
+    marginBottom: 5,
   },
   title: {
-    color: theme.colors.text,
-    ...theme.typography.title,
+    color: '#FFFFFF',
+    fontSize: 26,
+    lineHeight: 31,
+    fontWeight: '900',
   },
-  manualQueueBox: {
-    backgroundColor: theme.colors.surfaceRaised,
-    borderColor: theme.colors.borderSoft,
-    borderRadius: theme.radius.lg,
+  counter: {
+    minWidth: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(240, 75, 255, 0.25)',
     borderWidth: 1,
-    gap: theme.spacing.md,
-    padding: theme.spacing.md,
+    borderColor: 'rgba(240, 75, 255, 0.25)',
+  },
+  counterText: {
+    color: '#FF9BFF',
+    fontSize: 15,
+    fontWeight: '900',
+  },
+  manualBox: {
+    borderRadius: 20,
+    padding: 14,
+    backgroundColor: 'rgba(255,255,255,0.035)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.07)',
+    gap: 10,
   },
   manualTitle: {
-    color: theme.colors.text,
-    ...theme.typography.bodyStrong,
+    color: '#FFFFFF',
+    fontSize: 17,
+    fontWeight: '800',
   },
-  manualQueueInput: {
-    backgroundColor: theme.colors.surface,
-    borderColor: theme.colors.border,
-    borderRadius: theme.radius.md,
-    borderWidth: 1,
-    color: theme.colors.text,
+  manualRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  manualInput: {
+    flex: 1,
+    minWidth: 0,
+    minHeight: 48,
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    color: '#FFFFFF',
     fontSize: 15,
     fontWeight: '700',
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: 12,
+    backgroundColor: 'rgba(9, 7, 19, 0.9)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.10)',
   },
   loadingRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: theme.spacing.md,
+    gap: 10,
   },
   loadingText: {
-    color: theme.colors.textMuted,
-    ...theme.typography.body,
+    color: 'rgba(255,255,255,0.68)',
+    fontSize: 14,
   },
   errorText: {
-    color: theme.colors.danger,
-    ...theme.typography.body,
+    color: '#FF8DA3',
+    fontSize: 14,
+    lineHeight: 20,
   },
-  nextBox: {
-    backgroundColor: theme.colors.primaryMuted,
-    borderColor: theme.colors.primarySoft,
-    borderRadius: theme.radius.lg,
-    borderWidth: 1,
-    gap: theme.spacing.xs,
-    padding: theme.spacing.md,
-  },
-  nextLabel: {
-    color: theme.colors.accentStrong,
-    textTransform: 'uppercase',
-    ...theme.typography.label,
-  },
-  nextName: {
-    color: theme.colors.text,
-    ...theme.typography.bodyStrong,
+  emptyText: {
+    color: 'rgba(255,255,255,0.62)',
+    fontSize: 15,
+    lineHeight: 21,
   },
   queueList: {
-    gap: theme.spacing.sm,
+    gap: 10,
   },
   queueItem: {
-    backgroundColor: theme.colors.surfaceRaised,
-    borderColor: theme.colors.borderSoft,
-    borderRadius: theme.radius.lg,
-    borderWidth: 1,
-    gap: theme.spacing.md,
-    padding: theme.spacing.md,
-    overflow: 'hidden',
-    width: '100%',
-  },
-  nextItem: {
-    borderColor: theme.colors.primarySoft,
-  },
-  myItem: {
-    backgroundColor: theme.colors.accentMuted,
-    borderColor: theme.colors.borderStrong,
-  },
-  queueItemMain: {
+    minHeight: 78,
+    borderRadius: 22,
+    paddingLeft: 10,
+    paddingRight: 9,
+    paddingVertical: 8,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: theme.spacing.md,
-    width: '100%',
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
   },
-  queuePosition: {
+  queueItemFirst: {
+    borderColor: 'rgba(240, 75, 255, 0.45)',
+    backgroundColor: 'rgba(240, 75, 255, 0.07)',
+  },
+  queueItemMe: {
+    borderColor: 'rgba(255, 155, 255, 0.55)',
+  },
+  positionArea: {
+    width: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  positionBadge: {
     width: 38,
     height: 38,
-    borderRadius: theme.radius.pill,
-    backgroundColor: theme.colors.surface,
-    color: theme.colors.text,
-    textAlign: 'center',
-    textAlignVertical: 'center',
-    fontSize: 17,
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(8, 6, 18, 0.92)',
+  },
+  positionText: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    lineHeight: 21,
     fontWeight: '900',
-    overflow: 'hidden',
+    textAlign: 'center',
   },
-  myQueuePosition: {
-    backgroundColor: theme.colors.primary,
-    color: theme.colors.background,
-  },
-  queueInfo: {
+  nameArea: {
     flex: 1,
     minWidth: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 8,
+  },
+  name: {
+    color: '#FFFFFF',
+    fontSize: 26,
+    lineHeight: 31,
+    fontWeight: '900',
+    textAlign: 'center',
+  },
+  actionsArea: {
+    width: 34,
+    alignItems: 'center',
+    justifyContent: 'center',
     gap: 3,
   },
-  memberName: {
-    color: theme.colors.text,
-    minWidth: 0,
-    ...theme.typography.bodyStrong,
+  iconButton: {
+    width: 30,
+    height: 22,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(15, 11, 30, 0.98)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.10)',
   },
-  memberRole: {
-    color: theme.colors.textSoft,
-    fontSize: 13,
+  iconButtonDanger: {
+    backgroundColor: 'rgba(95, 22, 41, 0.34)',
+    borderColor: 'rgba(255, 99, 132, 0.58)',
+  },
+  iconButtonDisabled: {
+    opacity: 0.26,
+  },
+  iconButtonPressed: {
+    opacity: 0.75,
+    transform: [{ scale: 0.94 }],
+  },
+  iconButtonText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    lineHeight: 17,
+    fontWeight: '900',
+    textAlign: 'center',
+    includeFontPadding: false,
+  },
+  iconButtonTextDanger: {
+    color: '#FF8DA3',
+    fontSize: 18,
     lineHeight: 18,
-    fontWeight: '700',
   },
-  badges: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: theme.spacing.xs,
-    width: '100%',
+  iconButtonTextDisabled: {
+    color: 'rgba(255,255,255,0.55)',
   },
-  queueAdminActions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: theme.spacing.sm,
-    width: '100%',
-  },
-  actionButton: {
-    flexGrow: 1,
-    flexBasis: '45%',
-    minWidth: 110,
-  },
-  actionButtonFull: {
-    flexGrow: 1,
-    flexBasis: '100%',
+  iconGhost: {
+    width: 30,
+    height: 22,
   },
 });
