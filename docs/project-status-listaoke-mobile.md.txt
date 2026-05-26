@@ -324,3 +324,5 @@ O APK preview funciona.
 O Storybook funciona.
 TypeScript passa.
 A base está pronta para congelar o core e iniciar uma fase planejada de redesign visual.
+APK preview Android testado em dois celulares reais, funcionando com criação/entrada de sala e conexão Supabase/Reatime.
+newArchEnabled precisa ficar true por causa do react-native-reanimated.
