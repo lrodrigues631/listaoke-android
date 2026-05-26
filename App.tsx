@@ -3,6 +3,7 @@ import { ActivityIndicator, SafeAreaView, StyleSheet, Text, View } from 'react-n
 
 import { colors } from './src/constants/colors';
 import { startAnonymousSession } from './src/controllers/authController';
+import { registerPushNotifications } from './src/controllers/notificationController';
 import {
   clearCurrentRoomSession,
   createRoomFlow,
@@ -44,6 +45,10 @@ export default function App() {
 
         setUserId(result.userId);
         setAuthMessage(result.message);
+
+        void registerPushNotifications({ userId: result.userId }).catch((error) => {
+          console.warn('Não consegui registrar push notification:', error);
+        });
 
         const savedRoom = await getSavedCurrentRoom();
 
