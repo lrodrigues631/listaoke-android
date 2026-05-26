@@ -43,3 +43,5 @@ yarn-error.*
 *storybook.log
 storybook-static
 supabase/.temp/
+listaoke-firebase-adminsdk-*.json
+firebase-service-account.json
