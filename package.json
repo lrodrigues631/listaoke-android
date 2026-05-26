@@ -7,10 +7,10 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "storybook": "cross-env STORYBOOK_ENABLED=true expo start",
-    "storybook:clear": "cross-env STORYBOOK_ENABLED=true expo start -c",
-    "storybook:ios": "cross-env STORYBOOK_ENABLED=true expo start --ios",
-    "storybook:android": "cross-env STORYBOOK_ENABLED=true expo start --android"
+    "sb": "cross-env STORYBOOK_ENABLED=true expo start",
+    "sb:clear": "cross-env STORYBOOK_ENABLED=true expo start -c",
+    "sb:ios": "cross-env STORYBOOK_ENABLED=true expo start --ios",
+    "sb:android": "cross-env STORYBOOK_ENABLED=true expo start --android"
   },
   "dependencies": {
     "@babel/core": "^7.29.7",
