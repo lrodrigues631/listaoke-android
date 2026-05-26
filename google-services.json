@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "242142456010",
+    "project_id": "listaoke",
+    "storage_bucket": "listaoke.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:242142456010:android:4bf13e07966e9257d8ec33",
+        "android_client_info": {
+          "package_name": "com.lrodrigues631.listaokemobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCyzktJWp4HDmuRQfou-pNToa7Vp6haxM0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
