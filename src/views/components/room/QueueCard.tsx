@@ -8,7 +8,6 @@ import {
   View,
 } from 'react-native';
 import DraggableFlatList, {
-  ScaleDecorator,
   type RenderItemParams,
 } from 'react-native-draggable-flatlist';
 
@@ -175,101 +174,102 @@ export function QueueCard({
       ? 'Segure e arraste para mudar a posição na fila.'
       : 'Segure e arraste para baixo para adiar sua vez.';
 
-    const dragHint = isOwner ? 'segure para mover' : 'segure para adiar';
+    const dragHint = isOwner ? 'segure e arraste' : 'arraste para baixo';
 
     return (
-      <ScaleDecorator>
-        <Pressable
-          accessibilityRole={canDragItem ? 'button' : undefined}
-          accessibilityLabel={canDragItem ? dragAccessibilityLabel : undefined}
-          accessibilityHint={canDragItem ? dragAccessibilityHint : undefined}
-          disabled={!canDragItem || isActive}
-          delayLongPress={220}
-          onLongPress={canDragItem ? drag : undefined}
-          style={({ pressed }) => [
-            styles.queueItem,
-            isFirst && styles.queueItemFirst,
-            isThisMe && styles.queueItemMe,
-            canDragItem && styles.queueItemDraggable,
-            isActive && styles.queueItemActive,
-            pressed && canDragItem && !isActive && styles.queueItemPressed,
-          ]}
-        >
-          <View style={styles.positionArea}>
-            <View style={styles.positionBadge}>
-              <Text style={styles.positionText}>{index + 1}</Text>
-            </View>
+      <Pressable
+        accessibilityRole={canDragItem ? 'button' : undefined}
+        accessibilityLabel={canDragItem ? dragAccessibilityLabel : undefined}
+        accessibilityHint={canDragItem ? dragAccessibilityHint : undefined}
+        disabled={!canDragItem || isActive}
+        delayLongPress={220}
+        onLongPress={canDragItem ? drag : undefined}
+        style={({ pressed }) => [
+          styles.queueItem,
+          isFirst && styles.queueItemFirst,
+          isThisMe && styles.queueItemMe,
+          canDragItem && styles.queueItemDraggable,
+          pressed && canDragItem && !isActive && styles.queueItemPressed,
+          isActive && styles.queueItemActive,
+        ]}
+      >
+        <View style={styles.positionArea}>
+          <View style={[styles.positionBadge, isActive && styles.positionBadgeActive]}>
+            <Text style={styles.positionText}>{index + 1}</Text>
           </View>
+        </View>
 
-          <View style={styles.nameArea}>
-            <Text numberOfLines={1} ellipsizeMode="tail" style={styles.name}>
-              {displayName}
+        <View style={styles.nameArea}>
+          <Text numberOfLines={1} ellipsizeMode="tail" style={styles.name}>
+            {displayName}
+          </Text>
+
+          {canDragItem ? (
+            <Text
+              numberOfLines={1}
+              style={[styles.dragHint, isActive && styles.dragHintActive]}
+            >
+              {dragHint}
             </Text>
+          ) : null}
+        </View>
 
-            {canDragItem ? (
-              <Text numberOfLines={1} style={styles.dragHint}>
-                {dragHint}
-              </Text>
-            ) : null}
-          </View>
-
-          <View style={styles.actionsArea}>
-            {showActions && canRemove ? (
-              <QueueIconButton
-                label="×"
-                danger
-                accessibilityLabel={
-                  isOwner
-                    ? `Remover ${displayName} da fila`
-                    : 'Sair da fila'
+        <View style={styles.actionsArea}>
+          {showActions && canRemove ? (
+            <QueueIconButton
+              label="×"
+              danger
+              accessibilityLabel={
+                isOwner
+                  ? `Remover ${displayName} da fila`
+                  : 'Sair da fila'
+              }
+              disabled={isChangingQueue || isRoomClosed}
+              onPress={() => {
+                if (isOwner) {
+                  onOwnerRemoveQueueItem(item);
+                  return;
                 }
-                disabled={isChangingQueue || isRoomClosed}
-                onPress={() => {
-                  if (isOwner) {
-                    onOwnerRemoveQueueItem(item);
-                    return;
-                  }
 
-                  onCurrentMemberLeaveQueue?.();
-                }}
-              />
-            ) : (
-              <View style={styles.iconGhost} />
-            )}
+                onCurrentMemberLeaveQueue?.();
+              }}
+            />
+          ) : (
+            <View style={styles.iconGhost} />
+          )}
 
-            {isOwner ? (
-              <QueueIconButton
-                label="↑"
-                accessibilityLabel={`Subir ${displayName} na fila`}
-                disabled={isChangingQueue || isRoomClosed || !canMoveUp}
-                onPress={() => onOwnerMoveQueueItem(item, 'up')}
-              />
-            ) : (
-              <View style={styles.iconGhost} />
-            )}
+          {isOwner ? (
+            <QueueIconButton
+              label="↑"
+              accessibilityLabel={`Subir ${displayName} na fila`}
+              disabled={isChangingQueue || isRoomClosed || !canMoveUp}
+              onPress={() => onOwnerMoveQueueItem(item, 'up')}
+            />
+          ) : (
+            <View style={styles.iconGhost} />
+          )}
 
-            {showActions ? (
-              <QueueIconButton
-                label="↓"
-                accessibilityLabel={
-                  isOwner ? `Descer ${displayName} na fila` : 'Adiar minha vez'
+          {showActions ? (
+            <QueueIconButton
+              label="↓"
+              accessibilityLabel={
+                isOwner ? `Descer ${displayName} na fila` : 'Adiar minha vez'
+              }
+              disabled={isChangingQueue || isRoomClosed || !canMoveDown}
+              onPress={() => {
+                if (isOwner) {
+                  onOwnerMoveQueueItem(item, 'down');
+                  return;
                 }
-                disabled={isChangingQueue || isRoomClosed || !canMoveDown}
-                onPress={() => {
-                  if (isOwner) {
-                    onOwnerMoveQueueItem(item, 'down');
-                    return;
-                  }
 
-                  onCurrentMemberMoveDown?.();
-                }}
-              />
-            ) : (
-              <View style={styles.iconGhost} />
-            )}
-          </View>
-        </Pressable>
-      </ScaleDecorator>
+                onCurrentMemberMoveDown?.();
+              }}
+            />
+          ) : (
+            <View style={styles.iconGhost} />
+          )}
+        </View>
+      </Pressable>
     );
   }
 
@@ -335,57 +335,61 @@ export function QueueCard({
       ) : null}
 
       {!isLoadingQueue && !queueError && !isRoomClosed && waitingQueue.length > 0 ? (
-        <DraggableFlatList
-          data={waitingQueue}
-          keyExtractor={(item) => item.id}
-          renderItem={renderQueueItem}
-          ItemSeparatorComponent={QueueSeparator}
-          scrollEnabled={false}
-          activationDistance={8}
-          containerStyle={styles.queueList}
-          contentContainerStyle={styles.queueListContent}
-          onDragEnd={({ data, from, to }) => {
-            if (from === to) {
-              return;
-            }
+        <View style={styles.queueWrap}>
+          <DraggableFlatList
+            data={waitingQueue}
+            keyExtractor={(item) => item.id}
+            renderItem={renderQueueItem}
+            ItemSeparatorComponent={QueueSeparator}
+            scrollEnabled={false}
+            activationDistance={8}
+            dragItemOverflow
+            removeClippedSubviews={false}
+            containerStyle={styles.queueList}
+            contentContainerStyle={styles.queueListContent}
+            onDragEnd={({ data, from, to }) => {
+              if (from === to) {
+                return;
+              }
 
-            const movedItem = waitingQueue[from];
+              const movedItem = waitingQueue[from];
 
-            if (!movedItem) {
-              return;
-            }
+              if (!movedItem) {
+                return;
+              }
 
-            if (canOwnerDrag) {
-              onOwnerReorderQueue?.({
+              if (canOwnerDrag) {
+                onOwnerReorderQueue?.({
+                  item: movedItem,
+                  from,
+                  to,
+                  orderedItems: data,
+                });
+                return;
+              }
+
+              const canCurrentMemberSaveDrag =
+                !isOwner &&
+                movedItem.member_id === currentMemberId &&
+                Boolean(onCurrentMemberReorderQueue);
+
+              if (!canCurrentMemberSaveDrag) {
+                return;
+              }
+
+              if (to <= from) {
+                return;
+              }
+
+              onCurrentMemberReorderQueue?.({
                 item: movedItem,
                 from,
                 to,
                 orderedItems: data,
               });
-              return;
-            }
-
-            const canCurrentMemberSaveDrag =
-              !isOwner &&
-              movedItem.member_id === currentMemberId &&
-              Boolean(onCurrentMemberReorderQueue);
-
-            if (!canCurrentMemberSaveDrag) {
-              return;
-            }
-
-            if (to <= from) {
-              return;
-            }
-
-            onCurrentMemberReorderQueue?.({
-              item: movedItem,
-              from,
-              to,
-              orderedItems: data,
-            });
-          }}
-        />
+            }}
+          />
+        </View>
       ) : null}
     </AppCard>
   );
@@ -394,6 +398,7 @@ export function QueueCard({
 const styles = StyleSheet.create({
   card: {
     gap: 16,
+    overflow: 'visible',
   },
   header: {
     flexDirection: 'row',
@@ -484,53 +489,55 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 21,
   },
+  queueWrap: {
+    overflow: 'visible',
+  },
   queueList: {
     overflow: 'visible',
   },
   queueListContent: {
-    paddingVertical: 0,
+    paddingVertical: 2,
   },
   queueSeparator: {
     height: 10,
   },
   queueItem: {
-    minHeight: 78,
+    minHeight: 76,
     borderRadius: 22,
     paddingLeft: 10,
     paddingRight: 9,
     paddingVertical: 8,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.03)',
+    backgroundColor: 'rgba(255,255,255,0.035)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.08)',
   },
   queueItemFirst: {
-    borderColor: 'rgba(240, 75, 255, 0.45)',
-    backgroundColor: 'rgba(240, 75, 255, 0.07)',
+    borderColor: 'rgba(240, 75, 255, 0.42)',
+    backgroundColor: 'rgba(240, 75, 255, 0.065)',
   },
   queueItemMe: {
-    borderColor: 'rgba(255, 155, 255, 0.55)',
+    borderColor: 'rgba(255, 155, 255, 0.52)',
   },
   queueItemDraggable: {
-    borderColor: 'rgba(255,255,255,0.14)',
+    borderColor: 'rgba(255,255,255,0.16)',
   },
   queueItemPressed: {
-    transform: [{ scale: 0.99 }],
-    opacity: 0.92,
+    opacity: 0.94,
   },
   queueItemActive: {
-    borderColor: 'rgba(240, 75, 255, 0.9)',
-    backgroundColor: 'rgba(240, 75, 255, 0.12)',
+    borderColor: 'rgba(240, 75, 255, 0.82)',
+    backgroundColor: 'rgba(34, 21, 54, 0.98)',
     shadowColor: '#F04BFF',
     shadowOffset: {
       width: 0,
-      height: 8,
+      height: 7,
     },
-    shadowOpacity: 0.25,
-    shadowRadius: 14,
-    elevation: 8,
-    zIndex: 10,
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    elevation: 7,
+    zIndex: 20,
   },
   positionArea: {
     width: 48,
@@ -544,6 +551,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(8, 6, 18, 0.92)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.04)',
+  },
+  positionBadgeActive: {
+    borderColor: 'rgba(240, 75, 255, 0.75)',
+    backgroundColor: 'rgba(8, 6, 18, 0.98)',
   },
   positionText: {
     color: '#FFFFFF',
@@ -561,20 +574,23 @@ const styles = StyleSheet.create({
   },
   name: {
     color: '#FFFFFF',
-    fontSize: 26,
-    lineHeight: 31,
+    fontSize: 25,
+    lineHeight: 30,
     fontWeight: '900',
     textAlign: 'center',
   },
   dragHint: {
-    color: 'rgba(255,255,255,0.42)',
+    color: 'rgba(255,255,255,0.38)',
     fontSize: 10,
     lineHeight: 13,
     fontWeight: '800',
-    letterSpacing: 0.4,
+    letterSpacing: 0.35,
     textTransform: 'uppercase',
     textAlign: 'center',
-    marginTop: 2,
+    marginTop: 1,
+  },
+  dragHintActive: {
+    color: 'rgba(255,255,255,0.6)',
   },
   actionsArea: {
     width: 34,
