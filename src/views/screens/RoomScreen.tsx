@@ -363,6 +363,40 @@ export function RoomScreen({ room, onBackHome }: RoomScreenProps) {
     });
   }
 
+  function handleCurrentMemberReorderQueue({
+    item,
+    from,
+    to,
+  }: {
+    item: QueueItem;
+    from: number;
+    to: number;
+  }) {
+    if (isOwner || isChangingQueue || isRoomClosed || from === to) {
+      return;
+    }
+
+    if (item.member_id !== room.memberId) {
+      return;
+    }
+
+    if (to <= from) {
+      return;
+    }
+
+    const steps = to - from;
+
+    if (steps <= 0) {
+      return;
+    }
+
+    void runQueueAction(async () => {
+      for (let step = 0; step < steps; step += 1) {
+        await moveMyTurnDown(room.roomId, room.memberId);
+      }
+    });
+  }
+
   async function handleCopyCode() {
     try {
       setIsCopyingInvite(true);
@@ -756,6 +790,7 @@ export function RoomScreen({ room, onBackHome }: RoomScreenProps) {
             }
             onOwnerReorderQueue={handleOwnerReorderQueue}
             onOwnerRemoveQueueItem={confirmOwnerRemoveQueueItem}
+            onCurrentMemberReorderQueue={handleCurrentMemberReorderQueue}
             onCurrentMemberLeaveQueue={confirmCurrentMemberLeaveQueue}
             onCurrentMemberMoveDown={() =>
               runQueueAction(() => moveMyTurnDown(room.roomId, room.memberId))

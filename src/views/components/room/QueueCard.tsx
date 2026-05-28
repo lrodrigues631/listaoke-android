@@ -39,6 +39,7 @@ type QueueCardProps = {
   onOwnerMoveQueueItem: (item: QueueItem, direction: QueueMoveDirection) => void;
   onOwnerRemoveQueueItem: (item: QueueItem) => void;
   onOwnerReorderQueue?: (payload: QueueReorderPayload) => void;
+  onCurrentMemberReorderQueue?: (payload: QueueReorderPayload) => void;
   onCurrentMemberLeaveQueue?: () => void;
   onCurrentMemberMoveDown?: () => void;
 };
@@ -102,6 +103,7 @@ export function QueueCard({
   onOwnerMoveQueueItem,
   onOwnerRemoveQueueItem,
   onOwnerReorderQueue,
+  onCurrentMemberReorderQueue,
   onCurrentMemberLeaveQueue,
   onCurrentMemberMoveDown,
 }: QueueCardProps) {
@@ -113,7 +115,7 @@ export function QueueCard({
     !isChangingQueue &&
     manualName.trim().length > 0;
 
-  const canDragAsOwner =
+  const canOwnerDrag =
     isOwner &&
     !isRoomClosed &&
     !isChangingQueue &&
@@ -154,28 +156,43 @@ export function QueueCard({
       ? !isLast
       : isThisMe && !isLast && Boolean(onCurrentMemberMoveDown);
 
+    const canCurrentMemberDrag =
+      !isOwner &&
+      isThisMe &&
+      !isLast &&
+      !isRoomClosed &&
+      !isChangingQueue &&
+      Boolean(onCurrentMemberReorderQueue);
+
+    const canDragItem = canOwnerDrag || canCurrentMemberDrag;
     const showActions = isOwner || isThisMe;
+
+    const dragAccessibilityLabel = isOwner
+      ? `Reorganizar ${displayName} na fila`
+      : 'Adiar minha vez na fila';
+
+    const dragAccessibilityHint = isOwner
+      ? 'Segure e arraste para mudar a posição na fila.'
+      : 'Segure e arraste para baixo para adiar sua vez.';
+
+    const dragHint = isOwner ? 'segure para mover' : 'segure para adiar';
 
     return (
       <ScaleDecorator>
         <Pressable
-          accessibilityRole={canDragAsOwner ? 'button' : undefined}
-          accessibilityLabel={
-            canDragAsOwner ? `Reorganizar ${displayName} na fila` : undefined
-          }
-          accessibilityHint={
-            canDragAsOwner ? 'Segure e arraste para mudar a posição na fila.' : undefined
-          }
-          disabled={!canDragAsOwner || isActive}
+          accessibilityRole={canDragItem ? 'button' : undefined}
+          accessibilityLabel={canDragItem ? dragAccessibilityLabel : undefined}
+          accessibilityHint={canDragItem ? dragAccessibilityHint : undefined}
+          disabled={!canDragItem || isActive}
           delayLongPress={220}
-          onLongPress={canDragAsOwner ? drag : undefined}
+          onLongPress={canDragItem ? drag : undefined}
           style={({ pressed }) => [
             styles.queueItem,
             isFirst && styles.queueItemFirst,
             isThisMe && styles.queueItemMe,
-            canDragAsOwner && styles.queueItemDraggable,
+            canDragItem && styles.queueItemDraggable,
             isActive && styles.queueItemActive,
-            pressed && canDragAsOwner && !isActive && styles.queueItemPressed,
+            pressed && canDragItem && !isActive && styles.queueItemPressed,
           ]}
         >
           <View style={styles.positionArea}>
@@ -189,9 +206,9 @@ export function QueueCard({
               {displayName}
             </Text>
 
-            {canDragAsOwner ? (
+            {canDragItem ? (
               <Text numberOfLines={1} style={styles.dragHint}>
-                segure para mover
+                {dragHint}
               </Text>
             ) : null}
           </View>
@@ -328,7 +345,7 @@ export function QueueCard({
           containerStyle={styles.queueList}
           contentContainerStyle={styles.queueListContent}
           onDragEnd={({ data, from, to }) => {
-            if (!canDragAsOwner || from === to) {
+            if (from === to) {
               return;
             }
 
@@ -338,7 +355,30 @@ export function QueueCard({
               return;
             }
 
-            onOwnerReorderQueue?.({
+            if (canOwnerDrag) {
+              onOwnerReorderQueue?.({
+                item: movedItem,
+                from,
+                to,
+                orderedItems: data,
+              });
+              return;
+            }
+
+            const canCurrentMemberSaveDrag =
+              !isOwner &&
+              movedItem.member_id === currentMemberId &&
+              Boolean(onCurrentMemberReorderQueue);
+
+            if (!canCurrentMemberSaveDrag) {
+              return;
+            }
+
+            if (to <= from) {
+              return;
+            }
+
+            onCurrentMemberReorderQueue?.({
               item: movedItem,
               from,
               to,
