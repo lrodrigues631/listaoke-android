@@ -7,6 +7,10 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import DraggableFlatList, {
+  ScaleDecorator,
+  type RenderItemParams,
+} from 'react-native-draggable-flatlist';
 
 import type { QueueItem } from '../../../types/queueTypes';
 import type { RoomMember } from '../../../types/roomTypes';
@@ -14,6 +18,13 @@ import { AppButton } from '../ui/AppButton';
 import { AppCard } from '../ui/AppCard';
 
 type QueueMoveDirection = 'up' | 'down';
+
+type QueueReorderPayload = {
+  item: QueueItem;
+  from: number;
+  to: number;
+  orderedItems: QueueItem[];
+};
 
 type QueueCardProps = {
   waitingQueue: QueueItem[];
@@ -27,6 +38,7 @@ type QueueCardProps = {
   onOwnerAddManualQueueItem: (name: string) => void;
   onOwnerMoveQueueItem: (item: QueueItem, direction: QueueMoveDirection) => void;
   onOwnerRemoveQueueItem: (item: QueueItem) => void;
+  onOwnerReorderQueue?: (payload: QueueReorderPayload) => void;
   onCurrentMemberLeaveQueue?: () => void;
   onCurrentMemberMoveDown?: () => void;
 };
@@ -73,6 +85,10 @@ function QueueIconButton({
   );
 }
 
+function QueueSeparator() {
+  return <View style={styles.queueSeparator} />;
+}
+
 export function QueueCard({
   waitingQueue,
   membersById,
@@ -85,6 +101,7 @@ export function QueueCard({
   onOwnerAddManualQueueItem,
   onOwnerMoveQueueItem,
   onOwnerRemoveQueueItem,
+  onOwnerReorderQueue,
   onCurrentMemberLeaveQueue,
   onCurrentMemberMoveDown,
 }: QueueCardProps) {
@@ -96,6 +113,12 @@ export function QueueCard({
     !isChangingQueue &&
     manualName.trim().length > 0;
 
+  const canDragAsOwner =
+    isOwner &&
+    !isRoomClosed &&
+    !isChangingQueue &&
+    Boolean(onOwnerReorderQueue);
+
   function handleAddManual() {
     const cleanName = manualName.trim();
 
@@ -105,6 +128,132 @@ export function QueueCard({
 
     onOwnerAddManualQueueItem(cleanName);
     setManualName('');
+  }
+
+  function renderQueueItem({
+    item,
+    drag,
+    isActive,
+    getIndex,
+  }: RenderItemParams<QueueItem>) {
+    const currentIndex = getIndex();
+    const index =
+      typeof currentIndex === 'number'
+        ? currentIndex
+        : waitingQueue.findIndex((queueItem) => queueItem.id === item.id);
+
+    const member = membersById[item.member_id];
+    const displayName = member?.name ?? 'Participante';
+    const isThisMe = item.member_id === currentMemberId;
+    const isFirst = index === 0;
+    const isLast = index === waitingQueue.length - 1;
+
+    const canRemove = isOwner || isThisMe;
+    const canMoveUp = isOwner && !isFirst;
+    const canMoveDown = isOwner
+      ? !isLast
+      : isThisMe && !isLast && Boolean(onCurrentMemberMoveDown);
+
+    const showActions = isOwner || isThisMe;
+
+    return (
+      <ScaleDecorator>
+        <Pressable
+          accessibilityRole={canDragAsOwner ? 'button' : undefined}
+          accessibilityLabel={
+            canDragAsOwner ? `Reorganizar ${displayName} na fila` : undefined
+          }
+          accessibilityHint={
+            canDragAsOwner ? 'Segure e arraste para mudar a posição na fila.' : undefined
+          }
+          disabled={!canDragAsOwner || isActive}
+          delayLongPress={220}
+          onLongPress={canDragAsOwner ? drag : undefined}
+          style={({ pressed }) => [
+            styles.queueItem,
+            isFirst && styles.queueItemFirst,
+            isThisMe && styles.queueItemMe,
+            canDragAsOwner && styles.queueItemDraggable,
+            isActive && styles.queueItemActive,
+            pressed && canDragAsOwner && !isActive && styles.queueItemPressed,
+          ]}
+        >
+          <View style={styles.positionArea}>
+            <View style={styles.positionBadge}>
+              <Text style={styles.positionText}>{index + 1}</Text>
+            </View>
+          </View>
+
+          <View style={styles.nameArea}>
+            <Text numberOfLines={1} ellipsizeMode="tail" style={styles.name}>
+              {displayName}
+            </Text>
+
+            {canDragAsOwner ? (
+              <Text numberOfLines={1} style={styles.dragHint}>
+                segure para mover
+              </Text>
+            ) : null}
+          </View>
+
+          <View style={styles.actionsArea}>
+            {showActions && canRemove ? (
+              <QueueIconButton
+                label="×"
+                danger
+                accessibilityLabel={
+                  isOwner
+                    ? `Remover ${displayName} da fila`
+                    : 'Sair da fila'
+                }
+                disabled={isChangingQueue || isRoomClosed}
+                onPress={() => {
+                  if (isOwner) {
+                    onOwnerRemoveQueueItem(item);
+                    return;
+                  }
+
+                  onCurrentMemberLeaveQueue?.();
+                }}
+              />
+            ) : (
+              <View style={styles.iconGhost} />
+            )}
+
+            {isOwner ? (
+              <QueueIconButton
+                label="↑"
+                accessibilityLabel={`Subir ${displayName} na fila`}
+                disabled={isChangingQueue || isRoomClosed || !canMoveUp}
+                onPress={() => onOwnerMoveQueueItem(item, 'up')}
+              />
+            ) : (
+              <View style={styles.iconGhost} />
+            )}
+
+            {showActions ? (
+              <QueueIconButton
+                label="↓"
+                accessibilityLabel={
+                  isOwner ? `Descer ${displayName} na fila` : 'Adiar minha vez'
+                }
+                disabled={isChangingQueue || isRoomClosed || !canMoveDown}
+                onPress={() => {
+                  if (isOwner) {
+                    onOwnerMoveQueueItem(item, 'down');
+                    return;
+                  }
+
+                  onCurrentMemberMoveDown?.();
+                }}
+              />
+            ) : (
+              <View style={styles.iconGhost} />
+            )}
+          </View>
+        </Pressable>
+      </ScaleDecorator>
+    );
   }
 
   return (
@@ -168,103 +317,35 @@ export function QueueCard({
         </Text>
       ) : null}
 
-      {!isLoadingQueue && !queueError && !isRoomClosed ? (
-        <View style={styles.queueList}>
-          {waitingQueue.map((item, index) => {
-            const member = membersById[item.member_id];
-            const displayName = member?.name ?? 'Participante';
-            const isThisMe = item.member_id === currentMemberId;
-            const isFirst = index === 0;
-            const isLast = index === waitingQueue.length - 1;
+      {!isLoadingQueue && !queueError && !isRoomClosed && waitingQueue.length > 0 ? (
+        <DraggableFlatList
+          data={waitingQueue}
+          keyExtractor={(item) => item.id}
+          renderItem={renderQueueItem}
+          ItemSeparatorComponent={QueueSeparator}
+          scrollEnabled={false}
+          activationDistance={8}
+          containerStyle={styles.queueList}
+          contentContainerStyle={styles.queueListContent}
+          onDragEnd={({ data, from, to }) => {
+            if (!canDragAsOwner || from === to) {
+              return;
+            }
 
-            const canRemove = isOwner || isThisMe;
-            const canMoveUp = isOwner && !isFirst;
-            const canMoveDown = isOwner
-              ? !isLast
-              : isThisMe && !isLast && Boolean(onCurrentMemberMoveDown);
+            const movedItem = waitingQueue[from];
 
-            const showActions = isOwner || isThisMe;
+            if (!movedItem) {
+              return;
+            }
 
-            return (
-              <View
-                key={item.id}
-                style={[
-                  styles.queueItem,
-                  isFirst && styles.queueItemFirst,
-                  isThisMe && styles.queueItemMe,
-                ]}
-              >
-                <View style={styles.positionArea}>
-                  <View style={styles.positionBadge}>
-                    <Text style={styles.positionText}>{index + 1}</Text>
-                  </View>
-                </View>
-
-                <View style={styles.nameArea}>
-                  <Text numberOfLines={1} ellipsizeMode="tail" style={styles.name}>
-                    {displayName}
-                  </Text>
-                </View>
-
-                <View style={styles.actionsArea}>
-                  {showActions && canRemove ? (
-                    <QueueIconButton
-                      label="×"
-                      danger
-                      accessibilityLabel={
-                        isOwner
-                          ? `Remover ${displayName} da fila`
-                          : 'Sair da fila'
-                      }
-                      disabled={isChangingQueue || isRoomClosed}
-                      onPress={() => {
-                        if (isOwner) {
-                          onOwnerRemoveQueueItem(item);
-                          return;
-                        }
-
-                        onCurrentMemberLeaveQueue?.();
-                      }}
-                    />
-                  ) : (
-                    <View style={styles.iconGhost} />
-                  )}
-
-                  {isOwner ? (
-                    <QueueIconButton
-                      label="↑"
-                      accessibilityLabel={`Subir ${displayName} na fila`}
-                      disabled={isChangingQueue || isRoomClosed || !canMoveUp}
-                      onPress={() => onOwnerMoveQueueItem(item, 'up')}
-                    />
-                  ) : (
-                    <View style={styles.iconGhost} />
-                  )}
-
-                  {showActions ? (
-                    <QueueIconButton
-                      label="↓"
-                      accessibilityLabel={
-                        isOwner ? `Descer ${displayName} na fila` : 'Adiar minha vez'
-                      }
-                      disabled={isChangingQueue || isRoomClosed || !canMoveDown}
-                      onPress={() => {
-                        if (isOwner) {
-                          onOwnerMoveQueueItem(item, 'down');
-                          return;
-                        }
-
-                        onCurrentMemberMoveDown?.();
-                      }}
-                    />
-                  ) : (
-                    <View style={styles.iconGhost} />
-                  )}
-                </View>
-              </View>
-            );
-          })}
-        </View>
+            onOwnerReorderQueue?.({
+              item: movedItem,
+              from,
+              to,
+              orderedItems: data,
+            });
+          }}
+        />
       ) : null}
     </AppCard>
   );
@@ -364,7 +445,13 @@ const styles = StyleSheet.create({
     lineHeight: 21,
   },
   queueList: {
-    gap: 10,
+    overflow: 'visible',
+  },
+  queueListContent: {
+    paddingVertical: 0,
+  },
+  queueSeparator: {
+    height: 10,
   },
   queueItem: {
     minHeight: 78,
@@ -384,6 +471,26 @@ const styles = StyleSheet.create({
   },
   queueItemMe: {
     borderColor: 'rgba(255, 155, 255, 0.55)',
+  },
+  queueItemDraggable: {
+    borderColor: 'rgba(255,255,255,0.14)',
+  },
+  queueItemPressed: {
+    transform: [{ scale: 0.99 }],
+    opacity: 0.92,
+  },
+  queueItemActive: {
+    borderColor: 'rgba(240, 75, 255, 0.9)',
+    backgroundColor: 'rgba(240, 75, 255, 0.12)',
+    shadowColor: '#F04BFF',
+    shadowOffset: {
+      width: 0,
+      height: 8,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 14,
+    elevation: 8,
+    zIndex: 10,
   },
   positionArea: {
     width: 48,
@@ -418,6 +525,16 @@ const styles = StyleSheet.create({
     lineHeight: 31,
     fontWeight: '900',
     textAlign: 'center',
+  },
+  dragHint: {
+    color: 'rgba(255,255,255,0.42)',
+    fontSize: 10,
+    lineHeight: 13,
+    fontWeight: '800',
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+    textAlign: 'center',
+    marginTop: 2,
   },
   actionsArea: {
     width: 34,

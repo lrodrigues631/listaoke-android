@@ -1,3 +1,4 @@
+import { useState, type ComponentProps } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-native';
 import { StyleSheet, View } from 'react-native';
 
@@ -28,6 +29,12 @@ const mockActions = {
 
   onOwnerRemoveQueueItem: (item: QueueItem) =>
     console.log('Mock dono: remover item da fila', item),
+
+  onCurrentMemberLeaveQueue: () =>
+    console.log('Mock convidado: sair da fila'),
+
+  onCurrentMemberMoveDown: () =>
+    console.log('Mock convidado: adiar minha vez'),
 };
 
 const baseArgs = {
@@ -78,6 +85,32 @@ const meta = {
 export default meta;
 
 type Story = StoryObj<typeof meta>;
+type QueueCardStoryProps = ComponentProps<typeof QueueCard>;
+
+function OwnerDraggableQueueExample(args: QueueCardStoryProps) {
+  const [queue, setQueue] = useState(
+    ownerQueue.filter((item) => item.status === 'waiting')
+  );
+
+  return (
+    <QueueCard
+      {...args}
+      waitingQueue={queue}
+      isOwner
+      currentMemberId="member-owner"
+      onOwnerReorderQueue={({ item, from, to, orderedItems }) => {
+        console.log('Mock dono: drag reorder', {
+          item,
+          from,
+          to,
+          orderedItems,
+        });
+
+        setQueue(orderedItems);
+      }}
+    />
+  );
+}
 
 export const EmptyQueue: Story = {
   name: 'Fila vazia',
@@ -119,6 +152,17 @@ export const MultiplePeopleAsGuest: Story = {
 
 export const MultiplePeopleAsOwner: Story = {
   name: 'Fila com várias pessoas como dono',
+  args: {
+    ...baseArgs,
+    waitingQueue: ownerQueue.filter((item) => item.status === 'waiting'),
+    isOwner: true,
+    currentMemberId: 'member-owner',
+  },
+};
+
+export const OwnerDraggableQueue: Story = {
+  name: 'Dono reorganizando com drag',
+  render: (args) => <OwnerDraggableQueueExample {...args} />,
   args: {
     ...baseArgs,
     waitingQueue: ownerQueue.filter((item) => item.status === 'waiting'),

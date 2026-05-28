@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, SafeAreaView, StyleSheet, Text, View } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { colors } from './src/constants/colors';
 import { startAnonymousSession } from './src/controllers/authController';
@@ -166,86 +167,101 @@ export default function App() {
 
   if (authStatus === 'loading') {
     return (
-      <SafeAreaView style={styles.centerContainer}>
-        <ActivityIndicator size="large" />
-        <Text style={styles.loadingText}>{authMessage}</Text>
-      </SafeAreaView>
+      <GestureHandlerRootView style={styles.gestureRoot}>
+        <SafeAreaView style={styles.centerContainer}>
+          <ActivityIndicator size="large" />
+          <Text style={styles.loadingText}>{authMessage}</Text>
+        </SafeAreaView>
+      </GestureHandlerRootView>
     );
   }
 
   if (authStatus === 'error') {
     return (
-      <SafeAreaView style={styles.centerContainer}>
-        <View style={styles.errorCard}>
-          <Text style={styles.errorTitle}>Deu ruim na conexão.</Text>
-          <Text style={styles.errorText}>{authMessage}</Text>
-          <Text style={styles.errorHint}>
-            Confere o .env.local, a chave pública do Supabase e se Anonymous Sign-Ins está ativo.
-          </Text>
-        </View>
-      </SafeAreaView>
+      <GestureHandlerRootView style={styles.gestureRoot}>
+        <SafeAreaView style={styles.centerContainer}>
+          <View style={styles.errorCard}>
+            <Text style={styles.errorTitle}>Deu ruim na conexão.</Text>
+            <Text style={styles.errorText}>{authMessage}</Text>
+            <Text style={styles.errorHint}>
+              Confere o .env.local, a chave pública do Supabase e se Anonymous Sign-Ins está ativo.
+            </Text>
+          </View>
+        </SafeAreaView>
+      </GestureHandlerRootView>
     );
   }
 
   if (screen === 'createRoom') {
     return (
-      <SafeAreaView style={styles.appContainer}>
-        <CreateRoomScreen
-          isCreating={isCreatingRoom}
-          errorMessage={createRoomError}
-          onBack={() => {
-            setCreateRoomError(null);
-            setScreen('home');
-          }}
-          onCreateRoom={handleCreateRoom}
-        />
-      </SafeAreaView>
+      <GestureHandlerRootView style={styles.gestureRoot}>
+        <SafeAreaView style={styles.appContainer}>
+          <CreateRoomScreen
+            isCreating={isCreatingRoom}
+            errorMessage={createRoomError}
+            onBack={() => {
+              setCreateRoomError(null);
+              setScreen('home');
+            }}
+            onCreateRoom={handleCreateRoom}
+          />
+        </SafeAreaView>
+      </GestureHandlerRootView>
     );
   }
 
   if (screen === 'joinRoom') {
     return (
-      <SafeAreaView style={styles.appContainer}>
-        <JoinRoomScreen
-          isJoining={isJoiningRoom}
-          errorMessage={joinRoomError}
-          onBack={() => {
-            setJoinRoomError(null);
-            setScreen('home');
-          }}
-          onJoinRoom={handleJoinRoom}
-        />
-      </SafeAreaView>
+      <GestureHandlerRootView style={styles.gestureRoot}>
+        <SafeAreaView style={styles.appContainer}>
+          <JoinRoomScreen
+            isJoining={isJoiningRoom}
+            errorMessage={joinRoomError}
+            onBack={() => {
+              setJoinRoomError(null);
+              setScreen('home');
+            }}
+            onJoinRoom={handleJoinRoom}
+          />
+        </SafeAreaView>
+      </GestureHandlerRootView>
     );
   }
 
   if (screen === 'room' && currentRoom) {
     return (
-      <SafeAreaView style={styles.appContainer}>
-        <RoomScreen room={currentRoom} onBackHome={handleBackHome} />
-      </SafeAreaView>
+      <GestureHandlerRootView style={styles.gestureRoot}>
+        <SafeAreaView style={styles.appContainer}>
+          <RoomScreen room={currentRoom} onBackHome={handleBackHome} />
+        </SafeAreaView>
+      </GestureHandlerRootView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.appContainer}>
-      <HomeScreen
-        userId={userId}
-        authMessage={authMessage}
-        onCreateRoom={() => {
-          setCreateRoomError(null);
-          setScreen('createRoom');
-        }}
-        onJoinRoom={() => {
-          setJoinRoomError(null);
-          setScreen('joinRoom');
-        }}
-      />
-    </SafeAreaView>
+    <GestureHandlerRootView style={styles.gestureRoot}>
+      <SafeAreaView style={styles.appContainer}>
+        <HomeScreen
+          userId={userId}
+          authMessage={authMessage}
+          onCreateRoom={() => {
+            setCreateRoomError(null);
+            setScreen('createRoom');
+          }}
+          onJoinRoom={() => {
+            setJoinRoomError(null);
+            setScreen('joinRoom');
+          }}
+        />
+      </SafeAreaView>
+    </GestureHandlerRootView>
   );
 }
 
 const styles = StyleSheet.create({
+  gestureRoot: {
+    flex: 1,
+  },
   appContainer: {
     flex: 1,
     backgroundColor: colors.background,
