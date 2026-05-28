@@ -112,3 +112,24 @@ src/
 
 docs/
   sql/
+
+## Push notifications
+
+O app possui push notification Android configurado e validado em APK real.
+
+Fluxo atual:
+
+1. O app cria ou restaura o usuário anônimo via Supabase Auth.
+2. O app solicita permissão de notificação no Android.
+3. O app gera um Expo Push Token.
+4. O token é salvo em `public.push_tokens`.
+5. Quando existe alguém no palco e outro membro real vira o primeiro da fila de espera, o Supabase dispara a Edge Function.
+6. A Edge Function envia uma notificação para o próximo cantor.
+7. A tabela `public.room_next_singer_notifications` evita spam para o mesmo par de cantor atual + próximo cantor.
+
+Mensagem atual da notificação:
+
+```txt
+Sua vez esta chegando
+
+Nome, voce e o proximo da fila. Nao some agora.
