@@ -336,6 +336,33 @@ export function RoomScreen({ room, onBackHome }: RoomScreenProps) {
     }
   }
 
+  function handleOwnerReorderQueue({
+    item,
+    from,
+    to,
+  }: {
+    item: QueueItem;
+    from: number;
+    to: number;
+  }) {
+    if (!isOwner || isChangingQueue || isRoomClosed || from === to) {
+      return;
+    }
+
+    const direction = to > from ? 'down' : 'up';
+    const steps = Math.abs(to - from);
+
+    if (steps <= 0) {
+      return;
+    }
+
+    void runQueueAction(async () => {
+      for (let step = 0; step < steps; step += 1) {
+        await ownerMoveQueueItem(room.roomId, room.memberId, item.id, direction);
+      }
+    });
+  }
+
   async function handleCopyCode() {
     try {
       setIsCopyingInvite(true);
@@ -358,7 +385,7 @@ export function RoomScreen({ room, onBackHome }: RoomScreenProps) {
 
       Alert.alert('Convite copiado', 'Agora manda no grupo.');
     } catch {
-      Alert.alert('Não consegui copiar', 'Copia o código manualmente por enquanto. Chato, mas funciona.');
+      Alert.alert('Não consegui copiar', 'Copia o convite manualmente por enquanto.');
     } finally {
       setIsCopyingInvite(false);
     }
@@ -727,6 +754,7 @@ export function RoomScreen({ room, onBackHome }: RoomScreenProps) {
                 ownerMoveQueueItem(room.roomId, room.memberId, item.id, direction)
               )
             }
+            onOwnerReorderQueue={handleOwnerReorderQueue}
             onOwnerRemoveQueueItem={confirmOwnerRemoveQueueItem}
             onCurrentMemberLeaveQueue={confirmCurrentMemberLeaveQueue}
             onCurrentMemberMoveDown={() =>
