@@ -5,7 +5,9 @@ import { StyleSheet, View } from 'react-native';
 import { StorybookScreen } from '../../src/storybook/decorators/StorybookScreen';
 import {
   buildMembersById,
+  createQueueItem,
   fullMembers,
+  guestWaitingQueue,
   multiplePeopleQueue,
   onePersonQueue,
   ownerQueue,
@@ -19,6 +21,54 @@ const membersById = buildMembersById(fullMembers);
 const queueWithManualPerson = multiplePeopleQueue.filter(
   (item) => item.member_id === 'member-ana' || item.member_id === 'member-manual'
 );
+
+const guestQueueWithCurrentInMiddle: QueueItem[] = [
+  createQueueItem({
+    id: 'queue-ana-middle-test',
+    member_id: 'member-ana',
+    position: 1,
+    status: 'waiting',
+  }),
+  createQueueItem({
+    id: 'queue-current-middle-test',
+    member_id: 'member-current',
+    position: 2,
+    status: 'waiting',
+  }),
+  createQueueItem({
+    id: 'queue-bruno-middle-test',
+    member_id: 'member-bruno',
+    position: 3,
+    status: 'waiting',
+  }),
+  createQueueItem({
+    id: 'queue-manual-middle-test',
+    member_id: 'member-manual',
+    position: 4,
+    status: 'waiting',
+  }),
+];
+
+const guestQueueWithCurrentLast: QueueItem[] = [
+  createQueueItem({
+    id: 'queue-ana-last-test',
+    member_id: 'member-ana',
+    position: 1,
+    status: 'waiting',
+  }),
+  createQueueItem({
+    id: 'queue-bruno-last-test',
+    member_id: 'member-bruno',
+    position: 2,
+    status: 'waiting',
+  }),
+  createQueueItem({
+    id: 'queue-current-last-test',
+    member_id: 'member-current',
+    position: 3,
+    status: 'waiting',
+  }),
+];
 
 const mockActions = {
   onOwnerAddManualQueueItem: (name: string) =>
@@ -34,7 +84,7 @@ const mockActions = {
     console.log('Mock convidado: sair da fila'),
 
   onCurrentMemberMoveDown: () =>
-    console.log('Mock convidado: adiar minha vez'),
+    console.log('Mock convidado: adiar minha vez pelo botão'),
 };
 
 const baseArgs = {
@@ -112,6 +162,83 @@ function OwnerDraggableQueueExample(args: QueueCardStoryProps) {
   );
 }
 
+function GuestDraggableQueueExample(args: QueueCardStoryProps) {
+  const [queue, setQueue] = useState(guestWaitingQueue);
+
+  return (
+    <QueueCard
+      {...args}
+      waitingQueue={queue}
+      isOwner={false}
+      currentMemberId="member-current"
+      onCurrentMemberReorderQueue={({ item, from, to, orderedItems }) => {
+        console.log('Mock convidado: drag para baixo', {
+          item,
+          from,
+          to,
+          orderedItems,
+        });
+
+        if (to <= from) {
+          console.log('Mock convidado: movimento inválido ignorado');
+          return;
+        }
+
+        setQueue(orderedItems);
+      }}
+    />
+  );
+}
+
+function GuestMiddleQueueExample(args: QueueCardStoryProps) {
+  const [queue, setQueue] = useState(guestQueueWithCurrentInMiddle);
+
+  return (
+    <QueueCard
+      {...args}
+      waitingQueue={queue}
+      isOwner={false}
+      currentMemberId="member-current"
+      onCurrentMemberReorderQueue={({ item, from, to, orderedItems }) => {
+        console.log('Mock convidado no meio: tentativa de drag', {
+          item,
+          from,
+          to,
+          orderedItems,
+        });
+
+        if (to <= from) {
+          console.log('Mock convidado no meio: tentativa de subir bloqueada');
+          return;
+        }
+
+        setQueue(orderedItems);
+      }}
+    />
+  );
+}
+
+function GuestLastQueueExample(args: QueueCardStoryProps) {
+  const [queue] = useState(guestQueueWithCurrentLast);
+
+  return (
+    <QueueCard
+      {...args}
+      waitingQueue={queue}
+      isOwner={false}
+      currentMemberId="member-current"
+      onCurrentMemberReorderQueue={({ item, from, to, orderedItems }) => {
+        console.log('Mock convidado em último: não deveria arrastar', {
+          item,
+          from,
+          to,
+          orderedItems,
+        });
+      }}
+    />
+  );
+}
+
 export const EmptyQueue: Story = {
   name: 'Fila vazia',
   args: {
@@ -145,6 +272,39 @@ export const MultiplePeopleAsGuest: Story = {
   args: {
     ...baseArgs,
     waitingQueue: multiplePeopleQueue,
+    isOwner: false,
+    currentMemberId: 'member-current',
+  },
+};
+
+export const GuestDraggableQueue: Story = {
+  name: 'Convidado adiando com drag',
+  render: (args) => <GuestDraggableQueueExample {...args} />,
+  args: {
+    ...baseArgs,
+    waitingQueue: guestWaitingQueue,
+    isOwner: false,
+    currentMemberId: 'member-current',
+  },
+};
+
+export const GuestMiddleQueue: Story = {
+  name: 'Convidado no meio da fila',
+  render: (args) => <GuestMiddleQueueExample {...args} />,
+  args: {
+    ...baseArgs,
+    waitingQueue: guestQueueWithCurrentInMiddle,
+    isOwner: false,
+    currentMemberId: 'member-current',
+  },
+};
+
+export const GuestLastInQueue: Story = {
+  name: 'Convidado em último na fila',
+  render: (args) => <GuestLastQueueExample {...args} />,
+  args: {
+    ...baseArgs,
+    waitingQueue: guestQueueWithCurrentLast,
     isOwner: false,
     currentMemberId: 'member-current',
   },
