@@ -8,7 +8,7 @@ type RegisterPushTokenParams = {
   userId: string;
 };
 
-const ENABLE_PUSH_DEBUG_ALERTS = true;
+const ENABLE_PUSH_DEBUG_ALERTS = false;
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
