@@ -1,10 +1,7 @@
-import { Alert, StyleSheet, Text, View } from 'react-native';
-import * as Clipboard from 'expo-clipboard';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { theme } from '../../../constants/theme';
-import { AppBadge } from '../ui/AppBadge';
 import { AppButton } from '../ui/AppButton';
-import { RoomCodeChip } from '../ui/RoomCodeChip';
 
 type BasicRoom = {
   roomName?: string;
@@ -25,8 +22,13 @@ type RoomHeaderProps = {
   isRoomClosed?: boolean;
   isOwner?: boolean;
   isCopyingInvite?: boolean;
+  canJoinQueue?: boolean;
+  isChangingQueue?: boolean;
   onCopyCode?: () => void;
   onCopyInvite?: () => void;
+  onOpenOwnerPanel?: () => void;
+  onOpenMenu?: () => void;
+  onJoinQueue?: () => void;
   [key: string]: unknown;
 };
 
@@ -35,19 +37,16 @@ export function RoomHeader({
   roomName,
   name,
   title,
-  roomCode,
-  code,
   status,
   statusLabel,
   roomStatus,
   isRoomClosed,
-  isOwner = false,
-  isCopyingInvite = false,
-  onCopyCode,
-  onCopyInvite,
+  canJoinQueue = false,
+  isChangingQueue = false,
+  onOpenMenu,
+  onJoinQueue,
 }: RoomHeaderProps) {
   const resolvedRoomName = roomName ?? room?.roomName ?? name ?? title ?? 'Sala';
-  const resolvedRoomCode = roomCode ?? room?.roomCode ?? code ?? '';
 
   const resolvedIsClosed =
     typeof isRoomClosed === 'boolean'
@@ -56,28 +55,7 @@ export function RoomHeader({
 
   const resolvedStatusLabel =
     statusLabel ?? status ?? (resolvedIsClosed ? 'Sala encerrada' : 'Sala ativa');
-
-  async function handleCopyCode() {
-    if (!resolvedRoomCode) {
-      return;
-    }
-
-    try {
-      if (onCopyCode) {
-        onCopyCode();
-        return;
-      }
-
-      await Clipboard.setStringAsync(resolvedRoomCode);
-
-      Alert.alert('Código copiado.', 'Agora manda no grupo.');
-    } catch {
-      Alert.alert(
-        'Não consegui copiar',
-        'Copia o código manualmente por enquanto. Chato, mas funciona.'
-      );
-    }
-  }
+  const showJoinShortcut = canJoinQueue && !resolvedIsClosed && Boolean(onJoinQueue);
 
   return (
     <View style={styles.container}>
@@ -89,17 +67,36 @@ export function RoomHeader({
           <Text style={styles.brandText}>Listaokê</Text>
         </View>
 
-        <View style={styles.badgeRow}>
-          {isOwner ? <AppBadge label="Dono" variant="accent" /> : null}
-          <AppBadge
-            label={resolvedStatusLabel}
-            variant={resolvedIsClosed ? 'danger' : 'success'}
-          />
+        <View style={styles.headerActions}>
+          {onOpenMenu ? (
+            <AppButton
+              title="Menu"
+              accessibilityLabel="Abrir menu da sala"
+              variant="secondary"
+              size="compact"
+              style={styles.menuButton}
+              onPress={onOpenMenu}
+            />
+          ) : (
+            <Text style={styles.statusText}>{resolvedStatusLabel}</Text>
+          )}
+
+          {showJoinShortcut ? (
+            <AppButton
+              title="Entrar na fila"
+              accessibilityHint="Coloca você no fim da fila para cantar."
+              size="compact"
+              loading={isChangingQueue}
+              disabled={isChangingQueue}
+              style={styles.joinButton}
+              onPress={() => onJoinQueue?.()}
+            />
+          ) : null}
         </View>
       </View>
 
       <View style={styles.roomBlock}>
-        <Text style={styles.eyebrow}>{resolvedIsClosed ? 'Sala encerrada' : 'Sala ativa'}</Text>
+        <Text style={styles.eyebrow}>{resolvedStatusLabel}</Text>
         <Text
           accessibilityRole="header"
           adjustsFontSizeToFit
@@ -110,42 +107,6 @@ export function RoomHeader({
           {resolvedRoomName}
         </Text>
       </View>
-
-      <View style={styles.codePanel}>
-        <View style={styles.codeTextGroup}>
-          <Text style={styles.codeTitle}>Código da sala</Text>
-          <Text style={styles.hint}>
-            {resolvedRoomCode
-              ? isOwner
-                ? 'Copie ou compartilhe para chamar a turma.'
-                : 'Use como identificação da sala.'
-              : 'Sala pronta para a cantoria.'}
-          </Text>
-        </View>
-
-        {resolvedRoomCode ? (
-          <View style={styles.codeActions}>
-            <RoomCodeChip
-              code={resolvedRoomCode}
-              accessibilityLabel={`Código da sala ${resolvedRoomCode}. Toque para copiar.`}
-              highlighted={isOwner}
-              onPress={handleCopyCode}
-            />
-
-            {onCopyInvite ? (
-              <AppButton
-                title="Compartilhar"
-                accessibilityLabel="Compartilhar convite da sala"
-                variant="secondary"
-                size="compact"
-                loading={isCopyingInvite}
-                disabled={isCopyingInvite}
-                onPress={onCopyInvite}
-              />
-            ) : null}
-          </View>
-        ) : null}
-      </View>
     </View>
   );
 }
@@ -153,11 +114,10 @@ export function RoomHeader({
 const styles = StyleSheet.create({
   container: {
     gap: theme.spacing.lg,
-    paddingTop: theme.spacing.huge,
   },
   brandRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
     gap: theme.spacing.md,
   },
@@ -166,6 +126,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: theme.spacing.sm,
+    minWidth: 0,
   },
   brandMark: {
     width: 30,
@@ -185,19 +146,30 @@ const styles = StyleSheet.create({
   },
   brandText: {
     color: theme.colors.text,
+    flexShrink: 1,
     fontSize: 15,
     lineHeight: 19,
     fontWeight: '900',
     letterSpacing: 0.6,
     textTransform: 'uppercase',
   },
-  badgeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    flexWrap: 'wrap',
+  headerActions: {
+    alignItems: 'flex-end',
     gap: theme.spacing.sm,
-    flexShrink: 1,
+    flexShrink: 0,
+  },
+  menuButton: {
+    minWidth: 92,
+    paddingHorizontal: theme.spacing.md,
+  },
+  joinButton: {
+    minWidth: 128,
+  },
+  statusText: {
+    color: theme.colors.textMuted,
+    textAlign: 'right',
+    textTransform: 'uppercase',
+    ...theme.typography.label,
   },
   roomBlock: {
     gap: theme.spacing.xs,
@@ -209,31 +181,7 @@ const styles = StyleSheet.create({
   },
   title: {
     color: theme.colors.text,
+    minHeight: 42,
     ...theme.typography.titleLarge,
-  },
-  codePanel: {
-    backgroundColor: theme.colors.surface,
-    borderColor: theme.colors.borderSoft,
-    borderRadius: theme.radius.xl,
-    borderWidth: 1,
-    gap: theme.spacing.md,
-    padding: theme.spacing.lg,
-  },
-  codeTextGroup: {
-    gap: 3,
-  },
-  codeTitle: {
-    color: theme.colors.text,
-    ...theme.typography.bodyStrong,
-  },
-  hint: {
-    color: theme.colors.textMuted,
-    ...theme.typography.body,
-  },
-  codeActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: theme.spacing.md,
   },
 });

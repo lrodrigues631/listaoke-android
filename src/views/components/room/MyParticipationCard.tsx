@@ -20,6 +20,7 @@ type MyParticipationCardProps = {
   onMoveTurnDown: () => void;
   onLeaveQueue: () => void;
   onJoinQueue: () => void;
+  showJoinButton?: boolean;
 };
 
 export function MyParticipationCard({
@@ -33,8 +34,11 @@ export function MyParticipationCard({
   onMoveTurnDown,
   onLeaveQueue,
   onJoinQueue,
+  showJoinButton = true,
 }: MyParticipationCardProps) {
   const isNext = isMeWaiting && queuePosition === 1;
+  const isIdle =
+    !isRoomClosed && !wasRemovedFromRoom && !isMeOnStage && !isMeWaiting;
 
   const stateLabel = isMeOnStage
     ? 'No palco'
@@ -71,11 +75,17 @@ export function MyParticipationCard({
   return (
     <AnimatedEntrance type="slideUp">
       <GlowPulse active={isChangingQueue || isNext || isMeOnStage} borderRadius={theme.radius.lg}>
-        <AppCard variant={isMeOnStage || isNext ? 'accent' : 'default'} style={styles.card}>
+        <AppCard
+          variant={isMeOnStage || isNext ? 'accent' : 'default'}
+          style={[styles.card, isIdle && styles.idleCard]}
+        >
           <View style={styles.header}>
             <View style={styles.headerCopy}>
-              <Text style={styles.eyebrow}>Minha vez</Text>
-              <Text accessibilityRole="header" style={styles.title}>
+              <Text style={styles.eyebrow}>Classificação da vez</Text>
+              <Text
+                accessibilityRole="header"
+                style={[styles.title, isIdle && styles.idleTitle]}
+              >
                 {title}
               </Text>
             </View>
@@ -99,10 +109,11 @@ export function MyParticipationCard({
             <Text style={styles.message}>{message}</Text>
           )}
 
-          {!isRoomClosed && !wasRemovedFromRoom && !isMeOnStage && !isMeWaiting ? (
+          {showJoinButton && !isRoomClosed && !wasRemovedFromRoom && !isMeOnStage && !isMeWaiting ? (
             <AppButton
               title="Entrar na fila"
               accessibilityHint="Coloca você no fim da fila para cantar."
+              size="compact"
               loading={isChangingQueue}
               disabled={isChangingQueue}
               onPress={onJoinQueue}
@@ -117,16 +128,18 @@ export function MyParticipationCard({
                 variant="dangerOutline"
                 loading={isChangingQueue}
                 disabled={isChangingQueue}
+                style={styles.actionButton}
                 onPress={onLeaveQueue}
               />
 
               <AppButton
-                title="Adiar minha vez"
+                title="Pular minha vez"
                 accessibilityHint="Move sua vez uma posição para baixo na fila."
                 variant="secondary"
                 size="compact"
                 loading={isChangingQueue}
                 disabled={isChangingQueue || !canMoveMyTurnDown}
+                style={styles.actionButton}
                 onPress={onMoveTurnDown}
               />
             </View>
@@ -140,6 +153,10 @@ export function MyParticipationCard({
 const styles = StyleSheet.create({
   card: {
     gap: theme.spacing.lg,
+  },
+  idleCard: {
+    gap: theme.spacing.md,
+    paddingVertical: theme.spacing.md,
   },
   header: {
     flexDirection: 'row',
@@ -160,6 +177,9 @@ const styles = StyleSheet.create({
     color: theme.colors.text,
     ...theme.typography.title,
   },
+  idleTitle: {
+    ...theme.typography.bodyStrong,
+  },
   message: {
     color: theme.colors.textMuted,
     flex: 1,
@@ -168,30 +188,37 @@ const styles = StyleSheet.create({
   positionRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: theme.spacing.md,
+    gap: theme.spacing.lg,
   },
   positionBox: {
-    width: 86,
-    minHeight: 86,
+    width: 68,
+    minHeight: 68,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: theme.colors.primaryMuted,
     borderColor: theme.colors.primarySoft,
-    borderRadius: theme.radius.xl,
+    borderRadius: theme.radius.md,
     borderWidth: 1,
   },
   positionNumber: {
     color: theme.colors.primary,
-    fontSize: 42,
-    lineHeight: 46,
+    fontSize: 34,
+    lineHeight: 36,
     fontWeight: '900',
   },
   positionLabel: {
     color: theme.colors.textMuted,
+    fontSize: 10,
+    lineHeight: 12,
+    fontWeight: '900',
+    letterSpacing: 0.45,
     textTransform: 'uppercase',
-    ...theme.typography.label,
   },
   actions: {
     gap: theme.spacing.sm,
+  },
+  actionButton: {
+    alignSelf: 'stretch',
+    width: '100%',
   },
 });

@@ -4,8 +4,8 @@ import type { GestureResponderEvent, StyleProp, ViewStyle } from 'react-native';
 import { theme } from '../../../constants/theme';
 import { PressFeedback } from './MicroInteractions';
 
-type AppButtonVariant = 'primary' | 'secondary' | 'danger' | 'dangerOutline' | 'ghost';
-type AppButtonSize = 'default' | 'small' | 'compact';
+export type AppButtonVariant = 'primary' | 'secondary' | 'danger' | 'dangerOutline' | 'ghost';
+export type AppButtonSize = 'default' | 'small' | 'compact';
 
 type AppButtonProps = {
   title: string;

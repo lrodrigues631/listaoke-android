@@ -10,6 +10,7 @@ import {
 import DraggableFlatList, {
   type RenderItemParams,
 } from 'react-native-draggable-flatlist';
+import Svg, { Path } from 'react-native-svg';
 
 import type { QueueItem } from '../../../types/queueTypes';
 import type { RoomMember } from '../../../types/roomTypes';
@@ -34,6 +35,8 @@ type QueueCardProps = {
   isRoomClosed: boolean;
   isOwner: boolean;
   isChangingQueue: boolean;
+  showOwnerControls?: boolean;
+  compact?: boolean;
   onOwnerAddManualQueueItem: (name: string) => void;
   onOwnerMoveQueueItem: (item: QueueItem, direction: QueueMoveDirection) => void;
   onOwnerRemoveQueueItem: (item: QueueItem) => void;
@@ -44,14 +47,30 @@ type QueueCardProps = {
 };
 
 type QueueIconButtonProps = {
-  label: string;
+  icon?: 'trash';
+  label?: string;
   accessibilityLabel: string;
   disabled?: boolean;
   danger?: boolean;
   onPress: () => void;
 };
 
+function TrashIcon({ color }: { color: string }) {
+  return (
+    <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M4 7h16M10 11v6M14 11v6M6 7l1 14h10l1-14M9 7V4h6v3"
+        stroke={color}
+        strokeWidth={2.4}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
 function QueueIconButton({
+  icon,
   label,
   accessibilityLabel,
   disabled = false,
@@ -72,15 +91,19 @@ function QueueIconButton({
         pressed && !disabled && styles.iconButtonPressed,
       ]}
     >
-      <Text
-        style={[
-          styles.iconButtonText,
-          danger && styles.iconButtonTextDanger,
-          disabled && styles.iconButtonTextDisabled,
-        ]}
-      >
-        {label}
-      </Text>
+      {icon === 'trash' ? (
+        <TrashIcon color={disabled ? 'rgba(255,255,255,0.55)' : '#FFFFFF'} />
+      ) : (
+        <Text
+          style={[
+            styles.iconButtonText,
+            danger && styles.iconButtonTextDanger,
+            disabled && styles.iconButtonTextDisabled,
+          ]}
+        >
+          {label}
+        </Text>
+      )}
     </Pressable>
   );
 }
@@ -98,6 +121,8 @@ export function QueueCard({
   isRoomClosed,
   isOwner,
   isChangingQueue,
+  showOwnerControls = true,
+  compact = false,
   onOwnerAddManualQueueItem,
   onOwnerMoveQueueItem,
   onOwnerRemoveQueueItem,
@@ -110,6 +135,7 @@ export function QueueCard({
 
   const canAddManual =
     isOwner &&
+    showOwnerControls &&
     !isRoomClosed &&
     !isChangingQueue &&
     manualName.trim().length > 0;
@@ -150,9 +176,9 @@ export function QueueCard({
     const isLast = index === waitingQueue.length - 1;
 
     const canRemove = isOwner || isThisMe;
-    const canMoveUp = isOwner && !isFirst;
+    const canMoveUp = isOwner && showOwnerControls && !isFirst;
     const canMoveDown = isOwner
-      ? !isLast
+      ? showOwnerControls && !isLast
       : isThisMe && !isLast && Boolean(onCurrentMemberMoveDown);
 
     const canCurrentMemberDrag =
@@ -164,7 +190,7 @@ export function QueueCard({
       Boolean(onCurrentMemberReorderQueue);
 
     const canDragItem = canOwnerDrag || canCurrentMemberDrag;
-    const showActions = isOwner || isThisMe;
+    const showActions = canRemove || (isOwner && showOwnerControls) || isThisMe;
 
     const dragAccessibilityLabel = isOwner
       ? `Reorganizar ${displayName} na fila`
@@ -186,6 +212,7 @@ export function QueueCard({
         onLongPress={canDragItem ? drag : undefined}
         style={({ pressed }) => [
           styles.queueItem,
+          compact && styles.queueItemCompact,
           isFirst && styles.queueItemFirst,
           isThisMe && styles.queueItemMe,
           canDragItem && styles.queueItemDraggable,
@@ -194,13 +221,25 @@ export function QueueCard({
         ]}
       >
         <View style={styles.positionArea}>
-          <View style={[styles.positionBadge, isActive && styles.positionBadgeActive]}>
-            <Text style={styles.positionText}>{index + 1}</Text>
+          <View
+            style={[
+              styles.positionBadge,
+              compact && styles.positionBadgeCompact,
+              isActive && styles.positionBadgeActive,
+            ]}
+          >
+            <Text style={[styles.positionText, compact && styles.positionTextCompact]}>
+              {index + 1}
+            </Text>
           </View>
         </View>
 
         <View style={styles.nameArea}>
-          <Text numberOfLines={1} ellipsizeMode="tail" style={styles.name}>
+          <Text
+            numberOfLines={1}
+            ellipsizeMode="tail"
+            style={[styles.name, compact && styles.nameCompact]}
+          >
             {displayName}
           </Text>
 
@@ -215,9 +254,10 @@ export function QueueCard({
         </View>
 
         <View style={styles.actionsArea}>
-          {showActions && canRemove ? (
+          {canRemove ? (
             <QueueIconButton
-              label="×"
+              icon={isOwner ? 'trash' : undefined}
+              label={isOwner ? undefined : '×'}
               danger
               accessibilityLabel={
                 isOwner
@@ -235,10 +275,10 @@ export function QueueCard({
               }}
             />
           ) : (
-            <View style={styles.iconGhost} />
+            null
           )}
 
-          {isOwner ? (
+          {isOwner && showOwnerControls ? (
             <QueueIconButton
               label="↑"
               accessibilityLabel={`Subir ${displayName} na fila`}
@@ -246,10 +286,10 @@ export function QueueCard({
               onPress={() => onOwnerMoveQueueItem(item, 'up')}
             />
           ) : (
-            <View style={styles.iconGhost} />
+            null
           )}
 
-          {showActions ? (
+          {showActions && (!isOwner || showOwnerControls) ? (
             <QueueIconButton
               label="↓"
               accessibilityLabel={
@@ -266,7 +306,7 @@ export function QueueCard({
               }}
             />
           ) : (
-            <View style={styles.iconGhost} />
+            null
           )}
         </View>
       </Pressable>
@@ -279,7 +319,10 @@ export function QueueCard({
         <View style={styles.headerCopy}>
           <Text style={styles.eyebrow}>Fila de espera</Text>
 
-          <Text accessibilityRole="header" style={styles.title}>
+          <Text
+            accessibilityRole="header"
+            style={[styles.title, compact && styles.compactTitle]}
+          >
             {waitingQueue.length === 1
               ? '1 pessoa na fila'
               : `${waitingQueue.length} pessoas na fila`}
@@ -291,7 +334,7 @@ export function QueueCard({
         </View>
       </View>
 
-      {isOwner && !isRoomClosed ? (
+      {isOwner && showOwnerControls && !isRoomClosed ? (
         <View style={styles.manualBox}>
           <Text style={styles.manualTitle}>Adicionar sem app</Text>
 
@@ -424,6 +467,10 @@ const styles = StyleSheet.create({
     lineHeight: 31,
     fontWeight: '900',
   },
+  compactTitle: {
+    fontSize: 22,
+    lineHeight: 27,
+  },
   counter: {
     minWidth: 36,
     height: 36,
@@ -513,6 +560,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.08)',
   },
+  queueItemCompact: {
+    minHeight: 62,
+    borderRadius: 18,
+    paddingVertical: 7,
+  },
   queueItemFirst: {
     borderColor: 'rgba(240, 75, 255, 0.42)',
     backgroundColor: 'rgba(240, 75, 255, 0.065)',
@@ -554,6 +606,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.04)',
   },
+  positionBadgeCompact: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+  },
   positionBadgeActive: {
     borderColor: 'rgba(240, 75, 255, 0.75)',
     backgroundColor: 'rgba(8, 6, 18, 0.98)',
@@ -564,6 +621,10 @@ const styles = StyleSheet.create({
     lineHeight: 21,
     fontWeight: '900',
     textAlign: 'center',
+  },
+  positionTextCompact: {
+    fontSize: 15,
+    lineHeight: 18,
   },
   nameArea: {
     flex: 1,
@@ -588,6 +649,10 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     textAlign: 'center',
     marginTop: 1,
+  },
+  nameCompact: {
+    fontSize: 20,
+    lineHeight: 24,
   },
   dragHintActive: {
     color: 'rgba(255,255,255,0.6)',

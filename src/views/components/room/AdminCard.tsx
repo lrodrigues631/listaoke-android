@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { theme } from '../../../constants/theme';
-import { AppBadge } from '../ui/AppBadge';
 import { AppButton } from '../ui/AppButton';
 import { AppCard } from '../ui/AppCard';
 import { AppTextInput } from '../ui/AppTextInput';
@@ -95,7 +94,6 @@ export function AdminCard({
             <Text style={styles.subtitle}>Ações rápidas para manter a fila andando.</Text>
           </View>
 
-          <AppBadge label="Dono" variant="accent" />
         </View>
 
         <View style={styles.statsRow}>

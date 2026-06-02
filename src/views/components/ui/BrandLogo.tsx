@@ -36,16 +36,16 @@ const logoSources: Record<BrandLogoVariant, LogoSource> = {
 
 const dimensions = {
   horizontal: {
-    width: 190,
-    height: 54,
+    width: 171,
+    height: 49,
   },
   vertical: {
-    width: 190,
-    height: 54,
+    width: 171,
+    height: 49,
   },
   icon: {
-    width: 42,
-    height: 42,
+    width: 38,
+    height: 38,
   },
 };
 
@@ -90,7 +90,7 @@ export function BrandLogo({
 const styles = StyleSheet.create({
   container: {
     alignSelf: 'flex-start',
-    minHeight: 42,
+    minHeight: 38,
     justifyContent: 'center',
   },
   image: {

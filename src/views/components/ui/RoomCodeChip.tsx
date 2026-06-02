@@ -13,6 +13,7 @@ type RoomCodeChipProps = {
   compact?: boolean;
   highlighted?: boolean;
   disabled?: boolean;
+  showCopiedFeedback?: boolean;
   accessibilityLabel?: string;
   onPress?: () => void;
   style?: StyleProp<ViewStyle>;
@@ -26,6 +27,7 @@ export function RoomCodeChip({
   compact = false,
   highlighted = false,
   disabled = false,
+  showCopiedFeedback = true,
   accessibilityLabel,
   onPress,
   style,
@@ -45,7 +47,7 @@ export function RoomCodeChip({
   function handlePress() {
     onPress?.();
 
-    if (!copied) {
+    if (showCopiedFeedback && !copied) {
       setInternalCopied(true);
 
       if (timeoutRef.current) {
@@ -89,13 +91,15 @@ export function RoomCodeChip({
         </PressFeedback>
       </GlowPulse>
 
-      <FeedbackToast
-        visible={showCopied}
-        message={copiedMessage}
-        variant="success"
-        accessibilityLiveRegion="polite"
-        style={styles.toast}
-      />
+      {showCopiedFeedback ? (
+        <FeedbackToast
+          visible={showCopied}
+          message={copiedMessage}
+          variant="success"
+          accessibilityLiveRegion="polite"
+          style={styles.toast}
+        />
+      ) : null}
     </View>
   );
 }

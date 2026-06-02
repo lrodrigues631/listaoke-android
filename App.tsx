@@ -1,6 +1,9 @@
-import { useEffect, useState } from 'react';
-import { ActivityIndicator, SafeAreaView, StyleSheet, Text, View } from 'react-native';
+import type { ReactNode } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import * as SplashScreen from 'expo-splash-screen';
 
 import { colors } from './src/constants/colors';
 import { startAnonymousSession } from './src/controllers/authController';
@@ -14,6 +17,10 @@ import {
 import { getSavedCurrentRoom } from './src/models/currentRoomStorageModel';
 import type { AuthStatus } from './src/types/authTypes';
 import type { CurrentRoom } from './src/types/roomTypes';
+import {
+  AnimatedIntroScreen,
+  INTRO_DURATION_MS,
+} from './src/views/components/intro/AnimatedIntroScreen';
 import { CreateRoomScreen } from './src/views/screens/CreateRoomScreen';
 import { HomeScreen } from './src/views/screens/HomeScreen';
 import { JoinRoomScreen } from './src/views/screens/JoinRoomScreen';
@@ -21,7 +28,30 @@ import { RoomScreen } from './src/views/screens/RoomScreen';
 
 type AppScreen = 'home' | 'createRoom' | 'joinRoom' | 'room';
 
+const FORCE_SHOW_INTRO = false;
+const isAppIntroEnabled =
+  FORCE_SHOW_INTRO || process.env.EXPO_PUBLIC_DISABLE_APP_INTRO !== 'true';
+
+SplashScreen.preventAutoHideAsync().catch(() => undefined);
+SplashScreen.setOptions({
+  duration: 220,
+  fade: true,
+});
+
+type AppFrameProps = {
+  children: ReactNode;
+};
+
+function AppFrame({ children }: AppFrameProps) {
+  return (
+    <SafeAreaProvider>
+      <GestureHandlerRootView style={styles.gestureRoot}>{children}</GestureHandlerRootView>
+    </SafeAreaProvider>
+  );
+}
+
 export default function App() {
+  const [showIntro, setShowIntro] = useState(isAppIntroEnabled);
   const [authStatus, setAuthStatus] = useState<AuthStatus>('loading');
   const [authMessage, setAuthMessage] = useState('Conectando ao Supabase...');
   const [userId, setUserId] = useState<string | null>(null);
@@ -34,6 +64,20 @@ export default function App() {
 
   const [isJoiningRoom, setIsJoiningRoom] = useState(false);
   const [joinRoomError, setJoinRoomError] = useState<string | null>(null);
+
+  const handleIntroFinish = useCallback(() => {
+    setShowIntro(false);
+  }, []);
+
+  const handleIntroReady = useCallback(() => {
+    void SplashScreen.hideAsync();
+  }, []);
+
+  useEffect(() => {
+    if (!showIntro) {
+      void SplashScreen.hideAsync();
+    }
+  }, [showIntro]);
 
   useEffect(() => {
     let isMounted = true;
@@ -165,21 +209,33 @@ export default function App() {
     setScreen('home');
   }
 
+  if (showIntro) {
+    return (
+      <AppFrame>
+        <AnimatedIntroScreen
+          durationMs={INTRO_DURATION_MS}
+          onReady={handleIntroReady}
+          onFinish={handleIntroFinish}
+        />
+      </AppFrame>
+    );
+  }
+
   if (authStatus === 'loading') {
     return (
-      <GestureHandlerRootView style={styles.gestureRoot}>
-        <SafeAreaView style={styles.centerContainer}>
+      <AppFrame>
+        <SafeAreaView edges={['top', 'bottom']} style={styles.centerContainer}>
           <ActivityIndicator size="large" />
           <Text style={styles.loadingText}>{authMessage}</Text>
         </SafeAreaView>
-      </GestureHandlerRootView>
+      </AppFrame>
     );
   }
 
   if (authStatus === 'error') {
     return (
-      <GestureHandlerRootView style={styles.gestureRoot}>
-        <SafeAreaView style={styles.centerContainer}>
+      <AppFrame>
+        <SafeAreaView edges={['top', 'bottom']} style={styles.centerContainer}>
           <View style={styles.errorCard}>
             <Text style={styles.errorTitle}>Deu ruim na conexão.</Text>
             <Text style={styles.errorText}>{authMessage}</Text>
@@ -188,14 +244,14 @@ export default function App() {
             </Text>
           </View>
         </SafeAreaView>
-      </GestureHandlerRootView>
+      </AppFrame>
     );
   }
 
   if (screen === 'createRoom') {
     return (
-      <GestureHandlerRootView style={styles.gestureRoot}>
-        <SafeAreaView style={styles.appContainer}>
+      <AppFrame>
+        <View style={styles.appContainer}>
           <CreateRoomScreen
             isCreating={isCreatingRoom}
             errorMessage={createRoomError}
@@ -205,15 +261,15 @@ export default function App() {
             }}
             onCreateRoom={handleCreateRoom}
           />
-        </SafeAreaView>
-      </GestureHandlerRootView>
+        </View>
+      </AppFrame>
     );
   }
 
   if (screen === 'joinRoom') {
     return (
-      <GestureHandlerRootView style={styles.gestureRoot}>
-        <SafeAreaView style={styles.appContainer}>
+      <AppFrame>
+        <View style={styles.appContainer}>
           <JoinRoomScreen
             isJoining={isJoiningRoom}
             errorMessage={joinRoomError}
@@ -223,24 +279,24 @@ export default function App() {
             }}
             onJoinRoom={handleJoinRoom}
           />
-        </SafeAreaView>
-      </GestureHandlerRootView>
+        </View>
+      </AppFrame>
     );
   }
 
   if (screen === 'room' && currentRoom) {
     return (
-      <GestureHandlerRootView style={styles.gestureRoot}>
-        <SafeAreaView style={styles.appContainer}>
+      <AppFrame>
+        <SafeAreaView edges={['top', 'bottom']} style={styles.appContainer}>
           <RoomScreen room={currentRoom} onBackHome={handleBackHome} />
         </SafeAreaView>
-      </GestureHandlerRootView>
+      </AppFrame>
     );
   }
 
   return (
-    <GestureHandlerRootView style={styles.gestureRoot}>
-      <SafeAreaView style={styles.appContainer}>
+    <AppFrame>
+      <View style={styles.appContainer}>
         <HomeScreen
           userId={userId}
           authMessage={authMessage}
@@ -253,8 +309,8 @@ export default function App() {
             setScreen('joinRoom');
           }}
         />
-      </SafeAreaView>
-    </GestureHandlerRootView>
+      </View>
+    </AppFrame>
   );
 }
 

@@ -48,14 +48,14 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     backgroundColor: theme.colors.background,
     paddingHorizontal: theme.spacing.xl,
-    paddingTop: theme.spacing.xxl,
-    paddingBottom: theme.spacing.xxl,
+    paddingTop: theme.spacing.xl,
+    paddingBottom: theme.spacing.xxxl,
   },
   fullScreen: {
     flex: 1,
     backgroundColor: theme.colors.background,
     paddingHorizontal: theme.spacing.xl,
-    paddingTop: theme.spacing.xxl,
-    paddingBottom: theme.spacing.xxl,
+    paddingTop: theme.spacing.xl,
+    paddingBottom: theme.spacing.xxxl,
   },
 });

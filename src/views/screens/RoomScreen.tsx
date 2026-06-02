@@ -1,16 +1,23 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, ScrollView, Text, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ScrollView, Text, View } from 'react-native';
 
-import { AdminCard } from '../components/room/AdminCard';
 import { FinalSummaryCard } from '../components/room/FinalSummaryCard';
 import { HistoryPreviewCard } from '../components/room/HistoryPreviewCard';
 import { MembersCard } from '../components/room/MembersCard';
 import { MyParticipationCard } from '../components/room/MyParticipationCard';
+import { OwnerControlPanel } from '../components/room/OwnerControlPanel';
 import { QueueCard } from '../components/room/QueueCard';
 import { RoomHeader } from '../components/room/RoomHeader';
+import { RoomMenuModal } from '../components/room/RoomMenuModal';
+import { RoomModalScreen } from '../components/room/RoomModalScreen';
 import { StageCard } from '../components/room/StageCard';
 import { roomStyles as styles } from '../components/room/roomStyles';
 import { AppButton } from '../components/ui/AppButton';
+import {
+  AppDialog,
+  type AppDialogAction,
+  type AppDialogVariant,
+} from '../components/ui/AppDialog';
 import {
   formatRoomEventMessage,
   loadRoomEvents,
@@ -52,6 +59,16 @@ type RoomScreenProps = {
   onBackHome: () => void;
 };
 
+type RoomDialogState = {
+  eyebrow?: string;
+  title: string;
+  message?: string;
+  variant?: AppDialogVariant;
+  actions: AppDialogAction[];
+};
+
+type MenuReturnTarget = 'history' | 'members' | 'ownerPanel';
+
 const emptySummary: RoomSummary = {
   total_performances: 0,
   total_skips: 0,
@@ -75,6 +92,13 @@ function formatEventTime(dateValue: string): string {
 }
 
 export function RoomScreen({ room, onBackHome }: RoomScreenProps) {
+  const scrollViewRef = useRef<ScrollView | null>(null);
+  const sectionOffsetsRef = useRef<Record<'queue' | 'members' | 'history', number>>({
+    queue: 0,
+    members: 0,
+    history: 0,
+  });
+
   const [roomStatus, setRoomStatus] = useState<RoomStatus>(room.roomStatus);
 
   const [members, setMembers] = useState<RoomMember[]>([]);
@@ -93,7 +117,12 @@ export function RoomScreen({ room, onBackHome }: RoomScreenProps) {
   const [isChangingMember, setIsChangingMember] = useState(false);
   const [isCopyingInvite, setIsCopyingInvite] = useState(false);
   const [isLeavingRoom, setIsLeavingRoom] = useState(false);
-  const [isHistoryExpanded, setIsHistoryExpanded] = useState(false);
+  const [isOwnerPanelVisible, setIsOwnerPanelVisible] = useState(false);
+  const [isRoomMenuVisible, setIsRoomMenuVisible] = useState(false);
+  const [isMembersScreenVisible, setIsMembersScreenVisible] = useState(false);
+  const [isHistoryScreenVisible, setIsHistoryScreenVisible] = useState(false);
+  const [menuReturnTarget, setMenuReturnTarget] = useState<MenuReturnTarget | null>(null);
+  const [dialogState, setDialogState] = useState<RoomDialogState | null>(null);
 
   const [roomError, setRoomError] = useState<string | null>(null);
   const [membersError, setMembersError] = useState<string | null>(null);
@@ -187,6 +216,83 @@ export function RoomScreen({ room, onBackHome }: RoomScreenProps) {
     }
   }, [room.roomId]);
 
+  function closeDialog() {
+    setDialogState(null);
+  }
+
+  function showInfoDialog({
+    eyebrow,
+    title,
+    message,
+    variant = 'default',
+  }: {
+    eyebrow?: string;
+    title: string;
+    message: string;
+    variant?: AppDialogVariant;
+  }) {
+    setDialogState({
+      eyebrow,
+      title,
+      message,
+      variant,
+      actions: [
+        {
+          title: 'Entendi',
+          variant: variant === 'danger' ? 'dangerOutline' : 'primary',
+          onPress: closeDialog,
+        },
+      ],
+    });
+  }
+
+  function showConfirmDialog({
+    title,
+    message,
+    confirmTitle,
+    confirmVariant = 'primary',
+    onConfirm,
+  }: {
+    title: string;
+    message: string;
+    confirmTitle: string;
+    confirmVariant?: AppDialogAction['variant'];
+    onConfirm: () => void | Promise<void>;
+  }) {
+    setDialogState({
+      title,
+      message,
+      variant:
+        confirmVariant === 'danger' || confirmVariant === 'dangerOutline'
+          ? 'danger'
+          : 'default',
+      actions: [
+        {
+          title: 'Cancelar',
+          variant: 'secondary',
+          onPress: closeDialog,
+        },
+        {
+          title: confirmTitle,
+          variant: confirmVariant,
+          onPress: () => {
+            closeDialog();
+            void onConfirm();
+          },
+        },
+      ],
+    });
+  }
+
+  function showErrorDialog(title: string, message: string) {
+    showInfoDialog({
+      eyebrow: 'Aviso',
+      title,
+      message,
+      variant: 'danger',
+    });
+  }
+
   useEffect(() => {
     fetchRoom();
     fetchMembers();
@@ -267,25 +373,32 @@ export function RoomScreen({ room, onBackHome }: RoomScreenProps) {
     isMeWaiting &&
     waitingQueue.length > 1 &&
     waitingQueue[waitingQueue.length - 1]?.member_id !== room.memberId;
+  const canJoinQueueFromShortcut =
+    !isRoomClosed && !wasRemovedFromRoom && !isMeOnStage && !isMeWaiting;
 
   const currentOnStageMember = currentOnStage ? membersById[currentOnStage.member_id] : null;
-
-  const transferableMembers = members.filter(
-    (member) => member.id !== room.memberId && !member.is_manual
-  );
-  const removableMembers = members.filter((member) => member.id !== room.memberId);
+  const nextQueueItem = waitingQueue[0] ?? null;
+  const nextQueueMember = nextQueueItem ? membersById[nextQueueItem.member_id] : null;
+  const queuedMemberIds = waitingQueue.map((item) => item.member_id);
 
   async function runQueueAction(action: () => Promise<void>) {
     if (isRoomClosed) {
-      Alert.alert(
-        'Sala encerrada',
-        'Essa sala já foi encerrada. O karaokê dessa turma acabou por hoje.'
-      );
+      showInfoDialog({
+        eyebrow: 'Sala encerrada',
+        title: 'Sala encerrada',
+        message: 'Essa sala já foi encerrada. O karaokê dessa turma acabou por hoje.',
+        variant: 'danger',
+      });
       return;
     }
 
     if (wasRemovedFromRoom) {
-      Alert.alert('Você saiu da sala', 'Você não faz mais parte desta sala.');
+      showInfoDialog({
+        eyebrow: 'Fora da sala',
+        title: 'Você saiu da sala',
+        message: 'Você não faz mais parte desta sala.',
+        variant: 'danger',
+      });
       return;
     }
 
@@ -302,7 +415,7 @@ export function RoomScreen({ room, onBackHome }: RoomScreenProps) {
       const errorMessage =
         error instanceof Error ? error.message : 'Erro desconhecido ao mexer na fila.';
 
-      Alert.alert('Não consegui mexer na fila', errorMessage);
+      showErrorDialog('Não consegui mexer na fila', errorMessage);
     } finally {
       setIsChangingQueue(false);
     }
@@ -310,10 +423,12 @@ export function RoomScreen({ room, onBackHome }: RoomScreenProps) {
 
   async function runMemberAction(action: () => Promise<void>) {
     if (isRoomClosed) {
-      Alert.alert(
-        'Sala encerrada',
-        'Essa sala já foi encerrada. O karaokê dessa turma acabou por hoje.'
-      );
+      showInfoDialog({
+        eyebrow: 'Sala encerrada',
+        title: 'Sala encerrada',
+        message: 'Essa sala já foi encerrada. O karaokê dessa turma acabou por hoje.',
+        variant: 'danger',
+      });
       return;
     }
 
@@ -330,7 +445,7 @@ export function RoomScreen({ room, onBackHome }: RoomScreenProps) {
       const errorMessage =
         error instanceof Error ? error.message : 'Erro desconhecido ao mexer nos membros.';
 
-      Alert.alert('Não consegui alterar os membros', errorMessage);
+      showErrorDialog('Não consegui alterar os membros', errorMessage);
     } finally {
       setIsChangingMember(false);
     }
@@ -401,9 +516,17 @@ export function RoomScreen({ room, onBackHome }: RoomScreenProps) {
     try {
       setIsCopyingInvite(true);
       await copyRoomCode(room.roomCode);
-      Alert.alert('Código copiado', 'Agora manda no grupo antes que alguém invente de cantar sem fila.');
+      showInfoDialog({
+        eyebrow: 'Copiado',
+        title: 'Código copiado',
+        message: 'Agora cole no grupo ou envie para quem vai entrar na sala.',
+        variant: 'success',
+      });
     } catch {
-      Alert.alert('Não consegui copiar', 'Copia o código manualmente por enquanto. Chato, mas funciona.');
+      showErrorDialog(
+        'Não consegui copiar',
+        'Copia o código manualmente por enquanto. Chato, mas funciona.'
+      );
     } finally {
       setIsCopyingInvite(false);
     }
@@ -417,9 +540,14 @@ export function RoomScreen({ room, onBackHome }: RoomScreenProps) {
         roomCode: room.roomCode,
       });
 
-      Alert.alert('Convite copiado', 'Agora manda no grupo.');
+      showInfoDialog({
+        eyebrow: 'Copiado',
+        title: 'Convite copiado',
+        message: 'Agora manda no grupo.',
+        variant: 'success',
+      });
     } catch {
-      Alert.alert('Não consegui copiar', 'Copia o convite manualmente por enquanto.');
+      showErrorDialog('Não consegui copiar', 'Copia o convite manualmente por enquanto.');
     } finally {
       setIsCopyingInvite(false);
     }
@@ -429,118 +557,62 @@ export function RoomScreen({ room, onBackHome }: RoomScreenProps) {
     const targetMember = membersById[item.member_id];
     const targetName = targetMember?.name ?? 'Participante';
 
-    Alert.alert(
-      'Remover da fila?',
-      `Você quer remover ${targetName} ${item.status === 'on_stage' ? 'do palco' : 'da fila'}?`,
-      [
-        {
-          text: 'Cancelar',
-          style: 'cancel',
-        },
-        {
-          text: 'Remover',
-          style: 'destructive',
-          onPress: () =>
-            runQueueAction(() => ownerRemoveFromQueue(room.roomId, room.memberId, item.id)),
-        },
-      ]
-    );
+    showConfirmDialog({
+      title: 'Remover da fila?',
+      message: `Você quer remover ${targetName} ${
+        item.status === 'on_stage' ? 'do palco' : 'da fila'
+      }?`,
+      confirmTitle: 'Remover',
+      confirmVariant: 'danger',
+      onConfirm: () =>
+        runQueueAction(() => ownerRemoveFromQueue(room.roomId, room.memberId, item.id)),
+    });
   }
 
   function confirmOwnerFinishQueueItem(item: QueueItem) {
     const targetMember = membersById[item.member_id];
     const targetName = targetMember?.name ?? 'Participante';
 
-    Alert.alert(
-      'Concluir apresentação?',
-      `${targetName} volta para o fim da fila depois dessa música.`,
-      [
-        {
-          text: 'Cancelar',
-          style: 'cancel',
-        },
-        {
-          text: 'Concluir',
-          onPress: () =>
-            runQueueAction(() => ownerFinishQueueItem(room.roomId, room.memberId, item.id)),
-        },
-      ]
-    );
+    showConfirmDialog({
+      title: 'Concluir apresentação?',
+      message: `${targetName} volta para o fim da fila depois dessa música.`,
+      confirmTitle: 'Concluir',
+      onConfirm: () =>
+        runQueueAction(() => ownerFinishQueueItem(room.roomId, room.memberId, item.id)),
+    });
   }
 
   function confirmOwnerSkipQueueItem(item: QueueItem) {
     const targetMember = membersById[item.member_id];
     const targetName = targetMember?.name ?? 'Participante';
 
-    Alert.alert(
-      'Pular vez?',
-      `${targetName} volta para o fim da fila sem cantar agora.`,
-      [
-        {
-          text: 'Cancelar',
-          style: 'cancel',
-        },
-        {
-          text: 'Pular vez',
-          onPress: () =>
-            runQueueAction(() => ownerSkipQueueItem(room.roomId, room.memberId, item.id)),
-        },
-      ]
-    );
+    showConfirmDialog({
+      title: 'Pular vez?',
+      message: `${targetName} volta para o fim da fila sem cantar agora.`,
+      confirmTitle: 'Pular vez',
+      onConfirm: () =>
+        runQueueAction(() => ownerSkipQueueItem(room.roomId, room.memberId, item.id)),
+    });
   }
 
   function confirmCurrentMemberLeaveQueue() {
-    Alert.alert(
-      'Sair da fila?',
-      'Você sai da fila, mas continua na sala.',
-      [
-        {
-          text: 'Cancelar',
-          style: 'cancel',
-        },
-        {
-          text: 'Sair da fila',
-          style: 'destructive',
-          onPress: () => runQueueAction(() => leaveQueue(room.roomId, room.memberId)),
-        },
-      ]
-    );
+    showConfirmDialog({
+      title: 'Sair da fila?',
+      message: 'Você sai da fila, mas continua na sala.',
+      confirmTitle: 'Sair da fila',
+      confirmVariant: 'danger',
+      onConfirm: () => runQueueAction(() => leaveQueue(room.roomId, room.memberId)),
+    });
   }
 
   function confirmStopSinging() {
-    Alert.alert(
-      'Parar de cantar?',
-      'Você vai sair da fila. Para voltar, é só entrar de novo depois.',
-      [
-        {
-          text: 'Cancelar',
-          style: 'cancel',
-        },
-        {
-          text: 'Parar de cantar',
-          style: 'destructive',
-          onPress: () => runQueueAction(() => leaveQueue(room.roomId, room.memberId)),
-        },
-      ]
-    );
-  }
-
-  function confirmCloseRoom() {
-    Alert.alert(
-      'Fechar sala?',
-      'Isso encerra o karaokê para todo mundo e mostra o resumo final da noite.',
-      [
-        {
-          text: 'Cancelar',
-          style: 'cancel',
-        },
-        {
-          text: 'Fechar sala',
-          style: 'destructive',
-          onPress: handleCloseRoom,
-        },
-      ]
-    );
+    showConfirmDialog({
+      title: 'Parar de cantar?',
+      message: 'Você vai sair da fila. Para voltar, é só entrar de novo depois.',
+      confirmTitle: 'Parar de cantar',
+      confirmVariant: 'danger',
+      onConfirm: () => runQueueAction(() => leaveQueue(room.roomId, room.memberId)),
+    });
   }
 
   async function handleCloseRoom() {
@@ -557,9 +629,109 @@ export function RoomScreen({ room, onBackHome }: RoomScreenProps) {
       const errorMessage =
         error instanceof Error ? error.message : 'Erro desconhecido ao fechar sala.';
 
-      Alert.alert('Não consegui fechar a sala', errorMessage);
+      showErrorDialog('Não consegui fechar a sala', errorMessage);
     } finally {
       setIsClosingRoom(false);
+    }
+  }
+
+  function handleOwnerPanelShortcut(section: 'queue' | 'members' | 'history') {
+    setMenuReturnTarget(null);
+
+    if (section === 'members') {
+      setIsMembersScreenVisible(true);
+
+      requestAnimationFrame(() => {
+        setIsOwnerPanelVisible(false);
+      });
+      return;
+    }
+
+    if (section === 'history') {
+      setIsHistoryScreenVisible(true);
+
+      requestAnimationFrame(() => {
+        setIsOwnerPanelVisible(false);
+      });
+      return;
+    }
+
+    setIsOwnerPanelVisible(false);
+
+    requestAnimationFrame(() => {
+      scrollViewRef.current?.scrollTo({
+        y: Math.max(sectionOffsetsRef.current[section] - 12, 0),
+        animated: true,
+      });
+    });
+  }
+
+  function openOwnerPanelFromMenu() {
+    setMenuReturnTarget('ownerPanel');
+    setIsOwnerPanelVisible(true);
+
+    requestAnimationFrame(() => {
+      setIsRoomMenuVisible(false);
+    });
+  }
+
+  function openMembersScreenFromMenu() {
+    setMenuReturnTarget('members');
+    setIsMembersScreenVisible(true);
+
+    requestAnimationFrame(() => {
+      setIsRoomMenuVisible(false);
+    });
+  }
+
+  function openHistoryScreenFromMenu() {
+    setMenuReturnTarget('history');
+    setIsHistoryScreenVisible(true);
+
+    requestAnimationFrame(() => {
+      setIsRoomMenuVisible(false);
+    });
+  }
+
+  function handleJoinQueueShortcut() {
+    if (isRoomClosed || wasRemovedFromRoom || isMeOnStage || isMeWaiting) {
+      return;
+    }
+
+    setIsRoomMenuVisible(false);
+    void runQueueAction(() => joinQueue(room.roomId, room.memberId));
+  }
+
+  function reopenRoomMenuAfterDismiss() {
+    requestAnimationFrame(() => {
+      setIsRoomMenuVisible(true);
+    });
+  }
+
+  function handleOwnerPanelDismiss() {
+    setIsOwnerPanelVisible(false);
+
+    if (menuReturnTarget === 'ownerPanel') {
+      setMenuReturnTarget(null);
+      reopenRoomMenuAfterDismiss();
+    }
+  }
+
+  function handleMembersScreenDismiss() {
+    setIsMembersScreenVisible(false);
+
+    if (menuReturnTarget === 'members') {
+      setMenuReturnTarget(null);
+      reopenRoomMenuAfterDismiss();
+    }
+  }
+
+  function handleHistoryScreenDismiss() {
+    setIsHistoryScreenVisible(false);
+
+    if (menuReturnTarget === 'history') {
+      setMenuReturnTarget(null);
+      reopenRoomMenuAfterDismiss();
     }
   }
 
@@ -569,30 +741,24 @@ export function RoomScreen({ room, onBackHome }: RoomScreenProps) {
     }
 
     if (isOwner) {
-      Alert.alert(
-        'Você é o dono',
-        members.length > 1
-          ? 'Transfira a administração antes de sair.'
-          : 'Você é o único dono da sala. Feche a sala para encerrar.'
-      );
+      showInfoDialog({
+        eyebrow: 'Painel do dono',
+        title: 'Você é o dono',
+        message:
+          members.length > 1
+            ? 'Transfira a administração antes de sair.'
+            : 'Você é o único dono da sala. Feche a sala para encerrar.',
+      });
       return;
     }
 
-    Alert.alert(
-      'Sair da sala?',
-      'Você sai da sala e também sai da fila ou do palco.',
-      [
-        {
-          text: 'Cancelar',
-          style: 'cancel',
-        },
-        {
-          text: 'Sair da sala',
-          style: 'destructive',
-          onPress: handleLeaveRoom,
-        },
-      ]
-    );
+    showConfirmDialog({
+      title: 'Sair da sala?',
+      message: 'Você sai da sala e também sai da fila ou do palco.',
+      confirmTitle: 'Sair da sala',
+      confirmVariant: 'danger',
+      onConfirm: handleLeaveRoom,
+    });
   }
 
   async function handleLeaveRoom() {
@@ -613,7 +779,7 @@ export function RoomScreen({ room, onBackHome }: RoomScreenProps) {
       const errorMessage =
         error instanceof Error ? error.message : 'Erro desconhecido ao sair da sala.';
 
-      Alert.alert('Não consegui sair da sala', errorMessage);
+      showErrorDialog('Não consegui sair da sala', errorMessage);
     } finally {
       setIsLeavingRoom(false);
     }
@@ -621,63 +787,40 @@ export function RoomScreen({ room, onBackHome }: RoomScreenProps) {
 
   function confirmTransferOwnership(targetMember: RoomMember) {
     if (targetMember.is_manual) {
-      Alert.alert('Não dá', 'Participantes adicionados manualmente não podem virar dono da sala.');
+      showInfoDialog({
+        eyebrow: 'Membros',
+        title: 'Não dá',
+        message: 'Participantes adicionados manualmente não podem virar dono da sala.',
+        variant: 'danger',
+      });
       return;
     }
 
-    Alert.alert(
-      'Transferir administração?',
-      `Você quer passar a sala para ${targetMember.name}? Você continuará na sala como convidado.`,
-      [
-        {
-          text: 'Cancelar',
-          style: 'cancel',
-        },
-        {
-          text: 'Transferir',
-          onPress: () =>
-            runMemberAction(() =>
-              transferRoomOwnership(room.roomId, room.memberId, targetMember.id)
-            ),
-        },
-      ]
-    );
+    showConfirmDialog({
+      title: 'Transferir administração?',
+      message: `Você quer passar a sala para ${targetMember.name}? Você continuará na sala como convidado.`,
+      confirmTitle: 'Transferir',
+      onConfirm: () =>
+        runMemberAction(() =>
+          transferRoomOwnership(room.roomId, room.memberId, targetMember.id)
+        ),
+    });
   }
 
   function confirmRemoveMember(targetMember: RoomMember) {
-    Alert.alert(
-      'Remover membro?',
-      `Você quer remover ${targetMember.name} da sala? Essa pessoa também sairá da fila ou do palco.`,
-      [
-        {
-          text: 'Cancelar',
-          style: 'cancel',
-        },
-        {
-          text: 'Remover',
-          style: 'destructive',
-          onPress: () =>
-            runMemberAction(() =>
-              removeRoomMember(room.roomId, room.memberId, targetMember.id)
-            ),
-        },
-      ]
-    );
+    showConfirmDialog({
+      title: 'Remover membro?',
+      message: `Você quer remover ${targetMember.name} da sala? Essa pessoa também sairá da fila ou do palco.`,
+      confirmTitle: 'Remover',
+      confirmVariant: 'danger',
+      onConfirm: () =>
+        runMemberAction(() =>
+          removeRoomMember(room.roomId, room.memberId, targetMember.id)
+        ),
+    });
   }
 
-  const historyCard = (
-    <HistoryPreviewCard
-      events={events}
-      isLoadingEvents={isLoadingEvents}
-      eventsError={eventsError}
-      isExpanded={isHistoryExpanded}
-      onToggleExpanded={() => setIsHistoryExpanded((currentValue) => !currentValue)}
-      formatMessage={formatRoomEventMessage}
-      formatTime={formatEventTime}
-    />
-  );
-
-  const membersCard = (
+  const membersScreenCard = (
     <MembersCard
       members={members}
       currentMemberId={room.memberId}
@@ -686,19 +829,38 @@ export function RoomScreen({ room, onBackHome }: RoomScreenProps) {
       isOwner={isOwner}
       isRoomClosed={isRoomClosed}
       isChangingMember={isChangingMember}
+      currentOnStageMemberId={currentOnStage?.member_id ?? null}
+      queuedMemberIds={queuedMemberIds}
       onTransferOwnership={confirmTransferOwnership}
       onRemoveMember={confirmRemoveMember}
     />
   );
 
+  const historyScreenCard = (
+    <HistoryPreviewCard
+      events={events}
+      isLoadingEvents={isLoadingEvents}
+      eventsError={eventsError}
+      isExpanded
+      showToggle={false}
+      onToggleExpanded={() => undefined}
+      formatMessage={formatRoomEventMessage}
+      formatTime={formatEventTime}
+    />
+  );
+
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <>
+      <ScrollView ref={scrollViewRef} contentContainerStyle={styles.container}>
       <RoomHeader
         roomName={room.roomName}
         roomCode={room.roomCode}
-        isClosed={isRoomClosed}
-        isCopyingCode={isCopyingInvite}
-        onCopyCode={handleCopyCode}
+        isRoomClosed={isRoomClosed}
+        isOwner={isOwner}
+        canJoinQueue={canJoinQueueFromShortcut}
+        isChangingQueue={isChangingQueue}
+        onOpenMenu={() => setIsRoomMenuVisible(true)}
+        onJoinQueue={handleJoinQueueShortcut}
       />
 
       {roomError && <Text style={styles.errorText}>{roomError}</Text>}
@@ -710,9 +872,6 @@ export function RoomScreen({ room, onBackHome }: RoomScreenProps) {
             isLoadingSummary={isLoadingSummary}
             summaryError={summaryError}
           />
-
-          {historyCard}
-          {membersCard}
         </>
       ) : (
         <>
@@ -736,6 +895,7 @@ export function RoomScreen({ room, onBackHome }: RoomScreenProps) {
             isOwner={isOwner}
             isChangingQueue={isChangingQueue}
             wasRemovedFromRoom={wasRemovedFromRoom}
+            showOwnerControls={false}
             onFinishTurn={() => runQueueAction(() => finishMyTurn(room.roomId, room.memberId))}
             onSkipTurn={() => runQueueAction(() => skipMyTurn(room.roomId, room.memberId))}
             onStopSinging={confirmStopSinging}
@@ -758,48 +918,43 @@ export function RoomScreen({ room, onBackHome }: RoomScreenProps) {
             onMoveTurnDown={() => runQueueAction(() => moveMyTurnDown(room.roomId, room.memberId))}
             onLeaveQueue={() => runQueueAction(() => leaveQueue(room.roomId, room.memberId))}
             onJoinQueue={() => runQueueAction(() => joinQueue(room.roomId, room.memberId))}
+            showJoinButton={false}
           />
 
-          {isOwner && (
-            <AdminCard
-              transferableCount={transferableMembers.length}
-              removableCount={removableMembers.length}
-              isCopyingInvite={isCopyingInvite}
-              isClosingRoom={isClosingRoom}
-              onCopyInvite={handleCopyInvite}
-              onCloseRoom={confirmCloseRoom}
+          <View
+            onLayout={(event) => {
+              sectionOffsetsRef.current.queue = event.nativeEvent.layout.y;
+            }}
+          >
+            <QueueCard
+              waitingQueue={waitingQueue}
+              membersById={membersById}
+              currentMemberId={room.memberId}
+              isLoadingQueue={isLoadingQueue}
+              queueError={queueError}
+              isRoomClosed={isRoomClosed}
+              isOwner={isOwner}
+              isChangingQueue={isChangingQueue}
+              showOwnerControls={!isOwner}
+              compact
+              onOwnerAddManualQueueItem={(name) =>
+                runQueueAction(() => ownerAddManualQueueItem(room.roomId, room.memberId, name))
+              }
+              onOwnerMoveQueueItem={(item, direction) =>
+                runQueueAction(() =>
+                  ownerMoveQueueItem(room.roomId, room.memberId, item.id, direction)
+                )
+              }
+              onOwnerReorderQueue={handleOwnerReorderQueue}
+              onOwnerRemoveQueueItem={confirmOwnerRemoveQueueItem}
+              onCurrentMemberReorderQueue={handleCurrentMemberReorderQueue}
+              onCurrentMemberLeaveQueue={confirmCurrentMemberLeaveQueue}
+              onCurrentMemberMoveDown={() =>
+                runQueueAction(() => moveMyTurnDown(room.roomId, room.memberId))
+              }
             />
-          )}
+          </View>
 
-          <QueueCard
-            waitingQueue={waitingQueue}
-            membersById={membersById}
-            currentMemberId={room.memberId}
-            isLoadingQueue={isLoadingQueue}
-            queueError={queueError}
-            isRoomClosed={isRoomClosed}
-            isOwner={isOwner}
-            isChangingQueue={isChangingQueue}
-            onOwnerAddManualQueueItem={(name) =>
-              runQueueAction(() => ownerAddManualQueueItem(room.roomId, room.memberId, name))
-            }
-            onOwnerMoveQueueItem={(item, direction) =>
-              runQueueAction(() =>
-                ownerMoveQueueItem(room.roomId, room.memberId, item.id, direction)
-              )
-            }
-            onOwnerReorderQueue={handleOwnerReorderQueue}
-            onOwnerRemoveQueueItem={confirmOwnerRemoveQueueItem}
-            onCurrentMemberReorderQueue={handleCurrentMemberReorderQueue}
-            onCurrentMemberLeaveQueue={confirmCurrentMemberLeaveQueue}
-            onCurrentMemberMoveDown={() =>
-              runQueueAction(() => moveMyTurnDown(room.roomId, room.memberId))
-            }
-          />
-
-          {membersCard}
-
-          {historyCard}
         </>
       )}
 
@@ -816,6 +971,86 @@ export function RoomScreen({ room, onBackHome }: RoomScreenProps) {
           />
         )}
       </View>
-    </ScrollView>
+      </ScrollView>
+
+      <RoomMenuModal
+        visible={isRoomMenuVisible}
+        roomName={room.roomName}
+        roomCode={room.roomCode}
+        isOwner={isOwner}
+        isRoomClosed={isRoomClosed}
+        canJoinQueue={canJoinQueueFromShortcut}
+        isCopyingInvite={isCopyingInvite}
+        isChangingQueue={isChangingQueue}
+        onDismiss={() => setIsRoomMenuVisible(false)}
+        onCopyCode={handleCopyCode}
+        onOpenOwnerPanel={openOwnerPanelFromMenu}
+        onOpenMembers={openMembersScreenFromMenu}
+        onOpenHistory={openHistoryScreenFromMenu}
+        onJoinQueue={handleJoinQueueShortcut}
+      />
+
+      {isOwner && !isRoomClosed ? (
+        <OwnerControlPanel
+          visible={isOwnerPanelVisible}
+          roomName={room.roomName}
+          roomCode={room.roomCode}
+          peopleCount={members.length}
+          waitingCount={waitingQueue.length}
+          currentOnStage={currentOnStage}
+          currentOnStageMember={currentOnStageMember}
+          nextQueueItem={nextQueueItem}
+          nextQueueMember={nextQueueMember}
+          isCopyingInvite={isCopyingInvite}
+          isChangingQueue={isChangingQueue}
+          isClosingRoom={isClosingRoom}
+          onDismiss={handleOwnerPanelDismiss}
+          onCopyCode={handleCopyCode}
+          onCopyInvite={handleCopyInvite}
+          onAddManualQueueItem={(name) =>
+            runQueueAction(() => ownerAddManualQueueItem(room.roomId, room.memberId, name))
+          }
+          onFinishCurrentTurn={
+            currentOnStage
+              ? () => confirmOwnerFinishQueueItem(currentOnStage)
+              : undefined
+          }
+          onViewQueue={() => handleOwnerPanelShortcut('queue')}
+          onViewMembers={() => handleOwnerPanelShortcut('members')}
+          onViewHistory={() => handleOwnerPanelShortcut('history')}
+          onCloseRoom={handleCloseRoom}
+        />
+      ) : null}
+
+      <RoomModalScreen
+        visible={isMembersScreenVisible}
+        eyebrow="Pessoas"
+        title="Membros da sala"
+        onDismiss={handleMembersScreenDismiss}
+      >
+        {membersScreenCard}
+      </RoomModalScreen>
+
+      <RoomModalScreen
+        visible={isHistoryScreenVisible}
+        eyebrow="Memória da noite"
+        title="Histórico"
+        onDismiss={handleHistoryScreenDismiss}
+      >
+        {historyScreenCard}
+      </RoomModalScreen>
+
+      {dialogState ? (
+        <AppDialog
+          visible
+          eyebrow={dialogState.eyebrow}
+          title={dialogState.title}
+          message={dialogState.message}
+          variant={dialogState.variant}
+          actions={dialogState.actions}
+          onDismiss={closeDialog}
+        />
+      ) : null}
+    </>
   );
 }

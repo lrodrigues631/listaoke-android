@@ -17,7 +17,9 @@ const meta = {
     roomName: 'Noite do Karaoke',
     roomCode: '0427',
     roomStatus: 'open',
-    onCopyCode: () => console.log('Codigo copiado no Storybook'),
+    canJoinQueue: true,
+    onOpenMenu: () => console.log('Menu aberto no Storybook'),
+    onJoinQueue: () => console.log('Entrar na fila no Storybook'),
   },
   argTypes: {
     roomName: {
@@ -55,6 +57,9 @@ export const Guest: Story = {
     statusLabel: 'Sala ativa',
     isRoomClosed: false,
     isOwner: false,
+    canJoinQueue: true,
+    onOpenMenu: () => console.log('Mock: abrir menu'),
+    onJoinQueue: () => console.log('Mock: entrar na fila'),
   },
 };
 
@@ -67,8 +72,9 @@ export const Owner: Story = {
     statusLabel: 'Sala ativa',
     isRoomClosed: false,
     isOwner: true,
-    onCopyInvite: () => console.log('Mock: compartilhar convite'),
-    onCopyCode: () => console.log('Mock: codigo CANTA7 copiado'),
+    canJoinQueue: true,
+    onOpenMenu: () => console.log('Mock: abrir menu'),
+    onJoinQueue: () => console.log('Mock: entrar na fila'),
   },
 };
 
@@ -80,7 +86,8 @@ export const ShortCode: Story = {
     roomStatus: 'open',
     statusLabel: 'Sala ativa',
     isOwner: true,
-    onCopyInvite: () => console.log('Mock: compartilhar convite'),
+    canJoinQueue: false,
+    onOpenMenu: () => console.log('Mock: abrir menu'),
   },
 };
 
@@ -92,7 +99,9 @@ export const LongRoomName: Story = {
     roomStatus: 'open',
     statusLabel: 'Sala ativa',
     isOwner: true,
-    onCopyInvite: () => console.log('Mock: compartilhar convite'),
+    canJoinQueue: true,
+    onOpenMenu: () => console.log('Mock: abrir menu'),
+    onJoinQueue: () => console.log('Mock: entrar na fila'),
   },
 };
 
@@ -105,5 +114,6 @@ export const ClosedRoom: Story = {
     statusLabel: 'Sala encerrada',
     isRoomClosed: true,
     isOwner: true,
+    onOpenMenu: () => console.log('Mock: abrir menu'),
   },
 };

@@ -11,9 +11,9 @@ export const roomStyles = StyleSheet.create({
     flexGrow: 1,
     backgroundColor: colors.background,
     paddingHorizontal: 20,
-    paddingTop: 44,
-    paddingBottom: 20,
-    gap: 14,
+    paddingTop: 20,
+    paddingBottom: 32,
+    gap: 16,
   },
   header: {
     gap: 8,
@@ -482,7 +482,7 @@ export const roomStyles = StyleSheet.create({
   },
   footerActions: {
     gap: 10,
-    marginTop: 4,
-    marginBottom: 24,
+    marginTop: 8,
+    marginBottom: 8,
   },
 });

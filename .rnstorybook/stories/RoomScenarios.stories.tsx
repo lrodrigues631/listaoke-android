@@ -7,8 +7,6 @@ import {
   createQueueItem,
   emptySummary,
   finalSummary,
-  formatMockMessage,
-  formatMockTime,
   fullMembers,
   guestWaitingQueue,
   meOnStageQueue,
@@ -19,10 +17,7 @@ import {
 import type { RoomEvent, RoomSummary } from '../../src/types/eventTypes';
 import type { QueueItem } from '../../src/types/queueTypes';
 import type { RoomMember } from '../../src/types/roomTypes';
-import { AdminCard } from '../../src/views/components/room/AdminCard';
 import { FinalSummaryCard } from '../../src/views/components/room/FinalSummaryCard';
-import { HistoryPreviewCard } from '../../src/views/components/room/HistoryPreviewCard';
-import { MembersCard } from '../../src/views/components/room/MembersCard';
 import { MyParticipationCard } from '../../src/views/components/room/MyParticipationCard';
 import { QueueCard } from '../../src/views/components/room/QueueCard';
 import { RoomHeader } from '../../src/views/components/room/RoomHeader';
@@ -134,40 +129,6 @@ function RoomScenario({
     waitingQueue.length > 1 &&
     waitingQueue[waitingQueue.length - 1]?.member_id !== currentMemberId;
 
-  const transferableMembers = members.filter(
-    (member) => member.id !== currentMemberId && !member.is_manual
-  );
-
-  const removableMembers = members.filter((member) => member.id !== currentMemberId);
-
-  const historyCard = (
-    <HistoryPreviewCard
-      events={events}
-      isLoadingEvents={isLoading}
-      eventsError={eventsError}
-      isExpanded={events.length > 2}
-      onToggleExpanded={() => console.log('Mock: alternar histórico')}
-      formatMessage={formatMockMessage}
-      formatTime={formatMockTime}
-    />
-  );
-
-  const membersCard = (
-    <MembersCard
-      members={members}
-      currentMemberId={currentMemberId}
-      isLoadingMembers={isLoading}
-      membersError={membersError}
-      isOwner={isOwner}
-      isRoomClosed={isRoomClosed}
-      isChangingMember={false}
-      currentOnStageMemberId={currentOnStage?.member_id ?? null}
-      queuedMemberIds={waitingQueue.map((item) => item.member_id)}
-      onTransferOwnership={mockActions.onTransferOwnership}
-      onRemoveMember={mockActions.onRemoveMember}
-    />
-  );
-
   const stageCard = (
     <StageCard
       currentOnStage={currentOnStage}
@@ -203,26 +164,9 @@ function RoomScenario({
       onMoveTurnDown={mockActions.onMoveTurnDown}
       onLeaveQueue={mockActions.onLeaveQueue}
       onJoinQueue={mockActions.onJoinQueue}
+      showJoinButton={false}
     />
   );
-
-  const adminCard = isOwner ? (
-    <AdminCard
-      transferableCount={transferableMembers.length}
-      removableCount={removableMembers.length}
-      isCopyingInvite={false}
-      isClosingRoom={false}
-      waitingCount={waitingQueue.length}
-      hasCurrentSinger={Boolean(currentOnStage)}
-      isChangingQueue={false}
-      onCopyInvite={mockActions.onCopyInvite}
-      onCloseRoom={mockActions.onCloseRoom}
-      onAddManualQueueItem={mockActions.onOwnerAddManualQueueItem}
-      onFinishCurrentTurn={
-        currentOnStage ? () => mockActions.onOwnerFinishTurn(currentOnStage) : undefined
-      }
-    />
-  ) : null;
 
   const queueCard = (
     <QueueCard
@@ -234,9 +178,14 @@ function RoomScenario({
       isRoomClosed={isRoomClosed}
       isOwner={isOwner}
       isChangingQueue={false}
+      showOwnerControls={!isOwner}
+      compact
       onOwnerAddManualQueueItem={mockActions.onOwnerAddManualQueueItem}
       onOwnerMoveQueueItem={mockActions.onOwnerMoveQueueItem}
       onOwnerRemoveQueueItem={mockActions.onOwnerRemoveQueueItem}
+      onOwnerReorderQueue={({ item, from, to }) =>
+        console.log('Mock: arrastar item da fila', item, from, to)
+      }
     />
   );
 
@@ -253,8 +202,9 @@ function RoomScenario({
         roomCode="LK82P"
         isRoomClosed={isRoomClosed}
         isOwner={isOwner}
-        onCopyCode={mockActions.onCopyCode}
-        onCopyInvite={isOwner ? mockActions.onCopyInvite : undefined}
+        canJoinQueue={!isRoomClosed && !isMeOnStage && !isMeWaiting && !wasRemovedFromRoom}
+        onOpenMenu={() => console.log('Mock: abrir menu da sala')}
+        onJoinQueue={mockActions.onJoinQueue}
       />
 
       {roomError ? <Text style={roomStyles.errorText}>{roomError}</Text> : null}
@@ -266,9 +216,6 @@ function RoomScenario({
             isLoadingSummary={isLoading}
             summaryError={summaryError}
           />
-
-          {historyCard}
-          {membersCard}
         </>
       ) : (
         <>
@@ -285,19 +232,14 @@ function RoomScenario({
           {isOwner ? (
             <>
               {stageCard}
-              {adminCard}
-              {queueCard}
               {myParticipationCard}
-              {membersCard}
-              {historyCard}
+              {queueCard}
             </>
           ) : (
             <>
               {stageCard}
               {myParticipationCard}
               {queueCard}
-              {historyCard}
-              {membersCard}
             </>
           )}
         </>
@@ -404,7 +346,7 @@ export const GuestOnStage: Story = {
 };
 
 export const OwnerManagingRoom: Story = {
-  name: 'Dono com pessoa no palco',
+  name: 'Dono visÃ£o limpa',
   args: {
     title: 'Sala como dono gerenciando fila',
     roomStatus: 'open',
@@ -465,7 +407,7 @@ export const RemovedGuest: Story = {
 };
 
 export const ClosedRoom: Story = {
-  name: 'Sala encerrada',
+  name: 'Sala finalizada com resumo compacto',
   args: {
     title: 'Sala encerrada com resumo final',
     roomStatus: 'closed',
@@ -476,6 +418,21 @@ export const ClosedRoom: Story = {
     members: fullMembers,
     events: roomScenarioEvents,
     summary: finalSummary,
+  },
+};
+
+export const ClosedRoomEmptySummary: Story = {
+  name: 'Sala finalizada sem apresentaÃ§Ãµes',
+  args: {
+    title: 'Sala encerrada sem apresentaÃ§Ãµes',
+    roomStatus: 'closed',
+    currentMemberId: 'member-current',
+    isOwner: false,
+    currentOnStage: null,
+    queueItems: [],
+    members: fullMembers,
+    events: roomScenarioEvents,
+    summary: emptySummary,
   },
 };
 

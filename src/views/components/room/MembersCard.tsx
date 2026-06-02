@@ -18,6 +18,7 @@ type MembersCardProps = {
   isChangingMember: boolean;
   currentOnStageMemberId?: string | null;
   queuedMemberIds?: string[];
+  compact?: boolean;
   onTransferOwnership: (member: RoomMember) => void;
   onRemoveMember: (member: RoomMember) => void;
 };
@@ -56,20 +57,26 @@ export function MembersCard({
   isChangingMember,
   currentOnStageMemberId = null,
   queuedMemberIds = [],
+  compact = false,
   onTransferOwnership,
   onRemoveMember,
 }: MembersCardProps) {
   const onStageCount = currentOnStageMemberId ? 1 : 0;
   const queuedCount = queuedMemberIds.length;
   const outsideCount = Math.max(members.length - onStageCount - queuedCount, 0);
+  const visibleMembers = compact ? members.slice(0, 2) : members;
+  const hiddenMembersCount = Math.max(members.length - visibleMembers.length, 0);
 
   return (
     <AnimatedEntrance type="slideUp">
-      <AppCard style={styles.card}>
+      <AppCard style={[styles.card, compact && styles.compactCard]}>
         <View style={styles.header}>
           <View style={styles.headerCopy}>
             <Text style={styles.eyebrow}>Pessoas</Text>
-            <Text accessibilityRole="header" style={styles.title}>
+            <Text
+              accessibilityRole="header"
+              style={[styles.title, compact && styles.compactTitle]}
+            >
               Membros da sala
             </Text>
             <Text style={styles.subtitle}>Sala, fila e palco não são a mesma coisa.</Text>
@@ -114,10 +121,10 @@ export function MembersCard({
 
         {!isLoadingMembers && !membersError ? (
           <View style={styles.memberList}>
-            {members.map((member) => {
+            {visibleMembers.map((member) => {
               const isThisMe = member.id === currentMemberId;
               const stateLabel = getMemberStateLabel(member, currentOnStageMemberId, queuedMemberIds);
-              const canManageThisMember = isOwner && !isThisMe && !isRoomClosed;
+              const canManageThisMember = isOwner && !compact && !isThisMe && !isRoomClosed;
               const canTransferToThisMember = canManageThisMember && !member.is_manual;
 
               return (
@@ -172,6 +179,12 @@ export function MembersCard({
                 </View>
               );
             })}
+
+            {hiddenMembersCount > 0 ? (
+              <Text style={styles.moreText}>
+                +{hiddenMembersCount} pessoa{hiddenMembersCount === 1 ? '' : 's'} na sala
+              </Text>
+            ) : null}
           </View>
         ) : null}
       </AppCard>
@@ -182,6 +195,10 @@ export function MembersCard({
 const styles = StyleSheet.create({
   card: {
     gap: theme.spacing.lg,
+  },
+  compactCard: {
+    gap: theme.spacing.md,
+    paddingVertical: theme.spacing.md,
   },
   header: {
     flexDirection: 'row',
@@ -201,6 +218,9 @@ const styles = StyleSheet.create({
   title: {
     color: theme.colors.text,
     ...theme.typography.title,
+  },
+  compactTitle: {
+    ...theme.typography.bodyStrong,
   },
   subtitle: {
     color: theme.colors.textMuted,
@@ -255,6 +275,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     gap: theme.spacing.md,
     padding: theme.spacing.md,
+  },
+  moreText: {
+    color: theme.colors.textSoft,
+    ...theme.typography.buttonSmall,
   },
   memberInfo: {
     gap: 3,

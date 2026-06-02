@@ -16,6 +16,8 @@ type HistoryPreviewCardProps = {
   onToggleExpanded: () => void;
   formatMessage: (event: RoomEvent) => string;
   formatTime: (dateValue: string) => string;
+  compact?: boolean;
+  showToggle?: boolean;
 };
 
 export function HistoryPreviewCard({
@@ -26,17 +28,35 @@ export function HistoryPreviewCard({
   onToggleExpanded,
   formatMessage,
   formatTime,
+  compact = false,
+  showToggle = true,
 }: HistoryPreviewCardProps) {
-  const visibleEvents = isExpanded ? events.slice(0, 30) : events.slice(0, 3);
-  const canToggle = events.length > 3;
+  const collapsedLimit = compact ? 2 : 3;
+  const isAccordionClosed = compact && !isExpanded;
+  const visibleEvents = isAccordionClosed
+    ? []
+    : isExpanded
+      ? events.slice(0, 30)
+      : events.slice(0, collapsedLimit);
+  const canToggle = compact || events.length > collapsedLimit;
+  const toggleTitle = compact
+    ? isExpanded
+      ? 'Fechar história'
+      : 'Abrir história'
+    : isExpanded
+      ? 'Recolher histórico'
+      : 'Ver histórico completo';
 
   return (
     <AnimatedEntrance type="slideUp">
-      <AppCard style={styles.card}>
+      <AppCard style={[styles.card, compact && styles.compactCard]}>
         <View style={styles.header}>
           <View style={styles.headerCopy}>
             <Text style={styles.eyebrow}>História da noite</Text>
-            <Text accessibilityRole="header" style={styles.title}>
+            <Text
+              accessibilityRole="header"
+              style={[styles.title, compact && styles.compactTitle]}
+            >
               Memória do rolê
             </Text>
           </View>
@@ -44,16 +64,16 @@ export function HistoryPreviewCard({
           <AppBadge label={`${events.length}`} variant={events.length ? 'accent' : 'neutral'} />
         </View>
 
-        {isLoadingEvents ? (
+        {!isAccordionClosed && isLoadingEvents ? (
           <View style={styles.loadingRow}>
             <ActivityIndicator color={theme.colors.primary} />
             <Text style={styles.loadingText}>Carregando os acontecimentos...</Text>
           </View>
         ) : null}
 
-        {eventsError ? <Text style={styles.errorText}>{eventsError}</Text> : null}
+        {!isAccordionClosed && eventsError ? <Text style={styles.errorText}>{eventsError}</Text> : null}
 
-        {!isLoadingEvents && !eventsError && events.length === 0 ? (
+        {!isAccordionClosed && !isLoadingEvents && !eventsError && events.length === 0 ? (
           <EmptyState
             badge="Sem apresentações"
             title="Ninguém cantou ainda."
@@ -79,10 +99,10 @@ export function HistoryPreviewCard({
           </View>
         ) : null}
 
-        {!isLoadingEvents && !eventsError && canToggle ? (
+        {!isLoadingEvents && !eventsError && canToggle && showToggle ? (
           <AppButton
-            title={isExpanded ? 'Recolher histórico' : 'Ver histórico completo'}
-            accessibilityLabel={isExpanded ? 'Recolher histórico da noite' : 'Ver histórico completo da noite'}
+            title={toggleTitle}
+            accessibilityLabel={isExpanded ? 'Fechar história da noite' : 'Abrir história da noite'}
             variant="ghost"
             onPress={onToggleExpanded}
           />
@@ -95,6 +115,10 @@ export function HistoryPreviewCard({
 const styles = StyleSheet.create({
   card: {
     gap: theme.spacing.lg,
+  },
+  compactCard: {
+    gap: theme.spacing.md,
+    paddingVertical: theme.spacing.md,
   },
   header: {
     flexDirection: 'row',
@@ -114,6 +138,9 @@ const styles = StyleSheet.create({
   title: {
     color: theme.colors.text,
     ...theme.typography.title,
+  },
+  compactTitle: {
+    ...theme.typography.bodyStrong,
   },
   loadingRow: {
     flexDirection: 'row',
