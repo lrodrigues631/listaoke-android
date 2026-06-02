@@ -25,12 +25,14 @@ type RoomMenuModalProps = {
   canJoinQueue: boolean;
   isCopyingInvite: boolean;
   isChangingQueue: boolean;
+  isClosingRoom: boolean;
   onDismiss: () => void;
   onCopyCode: () => void;
   onOpenOwnerPanel: () => void;
   onOpenMembers: () => void;
   onOpenHistory: () => void;
   onJoinQueue: () => void;
+  onCloseRoom: () => void;
 };
 
 export function RoomMenuModal({
@@ -42,16 +44,19 @@ export function RoomMenuModal({
   canJoinQueue,
   isCopyingInvite,
   isChangingQueue,
+  isClosingRoom,
   onDismiss,
   onCopyCode,
   onOpenOwnerPanel,
   onOpenMembers,
   onOpenHistory,
   onJoinQueue,
+  onCloseRoom,
 }: RoomMenuModalProps) {
   const { width } = useWindowDimensions();
   const reducedMotion = useReducedMotion();
   const progress = useRef(new Animated.Value(visible || reducedMotion ? 1 : 0)).current;
+  const canCloseRoom = isOwner && !isRoomClosed;
 
   useEffect(() => {
     if (!visible) {
@@ -155,14 +160,27 @@ export function RoomMenuModal({
             </View>
           </ScrollView>
 
-          {canJoinQueue ? (
+          {canCloseRoom || canJoinQueue ? (
             <View style={styles.footer}>
-              <AppButton
-                title="Entrar na fila"
-                loading={isChangingQueue}
-                disabled={isChangingQueue}
-                onPress={onJoinQueue}
-              />
+              {canCloseRoom ? (
+                <AppButton
+                  title="Fechar sala"
+                  accessibilityLabel="Fechar sala"
+                  variant="dangerOutline"
+                  loading={isClosingRoom}
+                  disabled={isClosingRoom || isChangingQueue}
+                  onPress={onCloseRoom}
+                />
+              ) : null}
+
+              {canJoinQueue ? (
+                <AppButton
+                  title="Entrar na fila"
+                  loading={isChangingQueue}
+                  disabled={isChangingQueue}
+                  onPress={onJoinQueue}
+                />
+              ) : null}
             </View>
           ) : null}
         </SafeAreaView>
@@ -248,6 +266,7 @@ const styles = StyleSheet.create({
   footer: {
     borderColor: theme.colors.borderSoft,
     borderTopWidth: 1,
+    gap: theme.spacing.sm,
     paddingHorizontal: theme.spacing.xl,
     paddingBottom: theme.spacing.lg,
     paddingTop: theme.spacing.lg,

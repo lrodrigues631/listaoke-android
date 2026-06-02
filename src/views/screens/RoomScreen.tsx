@@ -635,6 +635,18 @@ export function RoomScreen({ room, onBackHome }: RoomScreenProps) {
     }
   }
 
+  function confirmCloseRoomFromMenu() {
+    setIsRoomMenuVisible(false);
+
+    showConfirmDialog({
+      title: 'Fechar sala?',
+      message: 'Fechar a sala finaliza a noite e gera o resumo.',
+      confirmTitle: 'Fechar sala',
+      confirmVariant: 'danger',
+      onConfirm: handleCloseRoom,
+    });
+  }
+
   function handleOwnerPanelShortcut(section: 'queue' | 'members' | 'history') {
     setMenuReturnTarget(null);
 
@@ -982,12 +994,14 @@ export function RoomScreen({ room, onBackHome }: RoomScreenProps) {
         canJoinQueue={canJoinQueueFromShortcut}
         isCopyingInvite={isCopyingInvite}
         isChangingQueue={isChangingQueue}
+        isClosingRoom={isClosingRoom}
         onDismiss={() => setIsRoomMenuVisible(false)}
         onCopyCode={handleCopyCode}
         onOpenOwnerPanel={openOwnerPanelFromMenu}
         onOpenMembers={openMembersScreenFromMenu}
         onOpenHistory={openHistoryScreenFromMenu}
         onJoinQueue={handleJoinQueueShortcut}
+        onCloseRoom={confirmCloseRoomFromMenu}
       />
 
       {isOwner && !isRoomClosed ? (
