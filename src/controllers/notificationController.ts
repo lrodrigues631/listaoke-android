@@ -1,4 +1,4 @@
-import { Alert, Platform } from 'react-native';
+import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 import * as Notifications from 'expo-notifications';
 
@@ -7,8 +7,6 @@ import { supabase } from '../config/supabase';
 type RegisterPushTokenParams = {
   userId: string;
 };
-
-const ENABLE_PUSH_DEBUG_ALERTS = false;
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -19,54 +17,68 @@ Notifications.setNotificationHandler({
   }),
 });
 
-function showPushDebug(title: string, message: string) {
-  if (!ENABLE_PUSH_DEBUG_ALERTS) {
+function warnPushRegistration(message: string, error?: unknown) {
+  if (error) {
+    console.warn(`[push] ${message}`, error);
     return;
   }
 
-  Alert.alert(title, message);
+  console.warn(`[push] ${message}`);
 }
 
 function getProjectId() {
   return Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
 }
 
+async function configureAndroidNotificationChannel() {
+  if (Platform.OS !== 'android') {
+    return;
+  }
+
+  try {
+    await Notifications.setNotificationChannelAsync('next-singer', {
+      name: 'Próximo a cantar',
+      importance: Notifications.AndroidImportance.HIGH,
+      vibrationPattern: [0, 250, 250, 250],
+      lightColor: '#F04BFF',
+    });
+  } catch (error) {
+    warnPushRegistration('Não foi possível configurar o canal Android next-singer.', error);
+  }
+}
+
 export async function registerPushNotifications({ userId }: RegisterPushTokenParams) {
   try {
     if (!userId) {
-      showPushDebug('Push debug', 'Sem userId. Não deu para registrar notificação.');
+      warnPushRegistration('Registro de notificações ignorado: usuário não identificado.');
       return null;
     }
 
     const projectId = getProjectId();
 
     if (!projectId) {
-      showPushDebug(
-        'Push debug',
-        'Não encontrei o projectId do EAS. Confere o extra.eas.projectId no app.json.'
-      );
+      warnPushRegistration('Registro de notificações ignorado: projectId do EAS ausente.');
       return null;
     }
 
     const { data: userData, error: userError } = await supabase.auth.getUser();
 
     if (userError) {
-      showPushDebug('Push debug', `Erro ao validar usuário no Supabase:\n${userError.message}`);
+      warnPushRegistration('Não foi possível validar o usuário no Supabase.', userError);
       return null;
     }
 
     if (!userData.user?.id) {
-      showPushDebug('Push debug', 'Usuário Supabase não encontrado na sessão atual.');
+      warnPushRegistration('Registro de notificações ignorado: sessão Supabase ausente.');
       return null;
     }
 
     if (userData.user.id !== userId) {
-      showPushDebug(
-        'Push debug',
-        `UserId do app diferente da sessão Supabase.\nApp: ${userId}\nSessão: ${userData.user.id}`
-      );
+      warnPushRegistration('Registro de notificações ignorado: usuário local difere da sessão.');
       return null;
     }
+
+    await configureAndroidNotificationChannel();
 
     const permissionResponse = await Notifications.getPermissionsAsync();
 
@@ -78,17 +90,8 @@ export async function registerPushNotifications({ userId }: RegisterPushTokenPar
     }
 
     if (finalStatus !== 'granted') {
-      showPushDebug('Push debug', 'Permissão de notificação negada pelo usuário.');
+      warnPushRegistration('Permissão de notificação não concedida.');
       return null;
-    }
-
-    if (Platform.OS === 'android') {
-      await Notifications.setNotificationChannelAsync('next-singer', {
-        name: 'Próximo a cantar',
-        importance: Notifications.AndroidImportance.HIGH,
-        vibrationPattern: [0, 250, 250, 250],
-        lightColor: '#F04BFF',
-      });
     }
 
     let expoPushToken: string;
@@ -100,13 +103,7 @@ export async function registerPushNotifications({ userId }: RegisterPushTokenPar
 
       expoPushToken = tokenResponse.data;
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-
-      showPushDebug(
-        'Push debug',
-        `Não consegui gerar o ExpoPushToken.\n\nProject ID:\n${projectId}\n\nErro:\n${message}`
-      );
-
+      warnPushRegistration('Não foi possível gerar o ExpoPushToken.', error);
       return null;
     }
 
@@ -123,25 +120,13 @@ export async function registerPushNotifications({ userId }: RegisterPushTokenPar
     );
 
     if (error) {
-      showPushDebug(
-        'Push debug',
-        `Token gerado, mas não consegui salvar no Supabase.\n\nErro:\n${error.message}\n\nToken:\n${expoPushToken}`
-      );
-
+      warnPushRegistration('Token gerado, mas não foi possível salvar no Supabase.', error);
       return null;
     }
 
-    showPushDebug(
-      'Push ativado',
-      `Token salvo no Supabase.\n\n${expoPushToken.slice(0, 40)}...`
-    );
-
     return expoPushToken;
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-
-    showPushDebug('Push debug', `Erro inesperado:\n${message}`);
-
+    warnPushRegistration('Erro inesperado ao registrar notificações.', error);
     return null;
   }
 }
